@@ -1,323 +1,177 @@
-# 04. Оценка качества кодовой базы
+# 04 — Оценка качества кодовой базы
 
-> Часть 4 из 4. См. также: [01_project_structure.md](01_project_structure.md), [02_architecture.md](02_architecture.md), [03_execution_flow.md](03_execution_flow.md)
-
-## Как читать этот документ
-
-Проект — учебно-демонстрационный (см. [01_project_structure.md](01_project_structure.md)). Часть перечисленных ниже замечаний для такой цели допустима: дублирование обработчиков намеренное, захардкоженные токены нужны для наглядности примера. Но дефекты разделены на две категории, и это разделение принципиально:
-
-- **Дефекты реализации** — код не делает того, что заявлено, или падает. Их надо править независимо от учебного статуса, потому что демонстрационный пример с ошибкой учит неверному.
-- **Отклонения от продакшн-практик** — осознанные упрощения. Опасны только при копировании кода в реальный сервис.
-
-Метрики цикломатической сложности собраны из графа кода: **максимум 3** (`camel_case_to_snake_case`, `get_async_session`), у остальных 1–2. Циклических зависимостей по `CALLS` — **0**. То есть проблема не в запутанности логики, а в структурных решениях и корректности деталей.
+> Документ содержит оценку читаемости, модульности, соответствия стандартам,
+> технический долг, code smells, узкие места и оценку безопасности.
 
 ---
 
-## Общая оценка
+## 1. Общая оценка читаемости, модульности и связности
 
-| Критерий | Оценка | Комментарий |
+### 1.1. Читаемость — ★★★★☆ (4/5)
+
+**Положительные аспекты:**
+- Единый стиль форматирования (`black`, line-length=120; `ruff` для линтинга).
+- Подробные комментарии в коде (особенно в `api/my_routes_dep/` — каждый подход снабжён нумерованными пояснениями).
+- Единый язык комментариев — русский (смешанный с английскими терминами).
+- Использование `Annotated`-типов делает сигнатуры функций самодокументируемыми.
+- Понятная структура имён: `router_*`, `model_*`, `schema_*`, `crud_*`.
+
+**Проблемы:**
+- Избыточное логирование в роутерах (по 2-3 вызова `logF.info` в каждом handler-е с дублирующейся информацией).
+- В `my_param_fast_cls.py` (строки 63-67) — баг в f-string: литерал `{request.client}` не интерполируется, используется `.format(request=request)` с синтаксисом, который не соответствует шаблону.
+- Имена переменных в `router_order_one.py` избыточно детализированы (`await_result_execute`, `result_scalars_all`) — это затрудняет чтение.
+
+### 1.2. Модульность — ★★★★☆ (4/5)
+
+**Положительные аспекты:**
+- Чёткое разделение на пакеты: `core/` (конфигурация), `db_core/` (БД), `api/` (роутеры), `example_sql/` и `ex_order_product/` (бизнес-модули), `utils/` (утилиты).
+- Каждый бизнес-модуль содержит собственные `models/`, `schemas/`, `crud/`, `router_*`.
+- Переиспользуемые типы вынесены в `db_core/type_for_models.py` и `api/my_routes_dep/pydantic_validator.py`.
+- `__init__.py` файлы выполняют роль фасадов (реэкспорт ключевых объектов).
+
+**Проблемы:**
+- Модуль `ex_order_product` **не имеет** слоя CRUD — SQL-запросы пишутся прямо в роутере (`router_order_one.py`). Это нарушает консистентность с модулем `example_sql`.
+- `db_core/__init__.py` импортирует ORM-модели из `example_sql` и `ex_order_product`, создавая **циклическую зависимость** между инфраструктурным слоем (`db_core`) и бизнес-слоем.
+
+### 1.3. Связность (Cohesion) и зацепление (Coupling) — ★★★☆☆ (3/5)
+
+- **Высокое зацепление** между `db_core` и бизнес-модулями через `db_core/__init__.py` (реэкспорт моделей).
+- **Глобальные синглтоны** (`settings`, `db_manager`, `logF`) создаются при импорте — это делает модули трудно тестируемыми (нельзя подменить конфигурацию или БД без мока на уровне модуля).
+- Роутеры жёстко зависят от `CurrentSession` — тип-алиас скрывает зависимость, что удобно, но затрудняет понимание графа зависимостей.
+
+---
+
+## 2. Соответствие стандартам SOLID, DRY, KISS и идиомам Python
+
+### 2.1. SOLID
+
+| Принцип | Оценка | Комментарий |
 |---|---|---|
-| Читаемость | **Высокая** | Явные аннотации типов, короткие функции, содержательные комментарии на русском |
-| Модульность | **Средняя** | `db_core` изолирован хорошо; два домена реализованы по разным правилам |
-| Связность (cohesion) | **Высокая** в `db_core`, `core`; **низкая** в `ex_order_product/router_order_one.py` |
-| Сцепление (coupling) | **Низкое** — благодаря DI и `CurrentSession` |
-| Идиоматичность | **Высокая** | SQLAlchemy 2.0 `Mapped[]`, `Annotated`, `asynccontextmanager`, `declared_attr.directive` |
-| Тестируемость | **Низкая** | Тестов нет; побочные эффекты при импорте мешают их написанию |
-| Наблюдаемость | **Низкая** | Логи uvicorn не перехватываются, метрик и health-check нет |
-| Безопасность | **Ниже приемлемого** | Утечка пароля в API-ответе, секреты в git |
-
-### Что сделано хорошо
-
-**Типизация.** Аннотации присутствуют почти везде, включая возвращаемые типы (`-> Sequence[User]`, `-> AsyncGenerator[AsyncSession, None]`). Используются современные конструкции: `str | None` вместо `Optional[str]` в моделях, `Self` в `cls_deps.py`, `Sequence` вместо `List` для возвращаемых коллекций.
-
-**Правильные детали инфраструктуры БД.** Три решения, которые обычно упускают:
-
-1. `PRAGMA foreign_keys=ON` для SQLite (`db_core/db_async.py`) — без этого хука SQLite молча игнорирует `ForeignKey`, и `ondelete="CASCADE"` в `OrderProductAssociation` не работал бы. Ошибка, которую находят месяцами.
-2. `naming_convention` в `MetaData` — делает имена констрейнтов детерминированными, что видно в миграциях (`op.f("fk_order_product_association_order_id_orders")`). Без этого автогенерируемые миграции невоспроизводимы между окружениями.
-3. `.unique()` перед `.scalars()` при `joinedload` на коллекции (`get_all_join`) — обязателен, иначе `InvalidRequestError`.
-
-**Whitelist вместо `getattr` для сортировки.** В `get_all_orders` порядок сортировки выбирается фиксированным `if/elif/else`, а не `getattr(Order, params)`. Это закрывает инъекцию через имя колонки. Правильный выбор, который часто делают неправильно.
-
-**DRY на уровне схемы БД.** `db_core/type_for_models.py` устраняет повторение `mapped_column(...)`: модели читаются как `id: Mapped[int_primary_key]`, `promocode: Mapped[str_len_50 | None]`.
-
-**`camel_case_to_snake_case` с doctest.** Единственная функция в проекте с исполняемыми примерами в docstring. Корректно обрабатывает аббревиатуры (`SomeSDK` → `some_sdk`), что нетривиально.
-
-**Фабрика приложения без подключения роутеров.** `create_app()` не знает о роутерах — они подключаются в `main.py`. Это делает фабрику пригодной для тестов с изолированным набором маршрутов, хотя тестов пока нет.
-
----
-
-## Соответствие принципам
-
-### SOLID
-
-**Single Responsibility — нарушается в двух местах.**
-
-`ex_order_product/router_order_one.py` совмещает три ответственности: HTTP-контракт, построение SQL и диагностическое логирование. Обработчик `get_all_join` дополнительно занимается сравнением двух способов разбора `Result` — четвёртая ответственность, чисто демонстрационная.
-
-`ConfigLogger` (`config_log.py`) отвечает и за конструирование конфигурации (`create_config_dict`), и за создание каталога на файловой системе (`__create_log_dir`), и за применение конфигурации, и за выдачу логгеров (`get_logger`). Четыре причины для изменения в одном классе.
-
-**Open/Closed — соблюдается.** Иерархия схем `OrderResp` → `OrderRespWithProducts` / `OrderRespWithAssoc` расширяется наследованием без правки базовых классов. `BaseGreat` → `GreatHelper` / `GreatService` — то же.
-
-**Liskov — соблюдается**, подмены с изменением контракта нет.
-
-**Interface Segregation — соблюдается.** Иерархия response-схем в `schema_order_product.py` — это и есть сегрегация: клиент получает ровно тот набор полей, который соответствует стратегии загрузки связей в запросе.
-
-**Dependency Inversion — соблюдается частично.** Обработчики зависят от абстракции `CurrentSession`, а не от конкретного движка. Но `example_sql/router_users.py` импортирует конкретный модуль `crud_users` напрямую, а `ex_order_product` вообще обходится без слоя абстракции.
-
-### DRY
-
-Соблюдается в инфраструктуре (`type_for_models.py`, `CurrentSession`, `get_header_dependency`) и **намеренно нарушается** в `api/my_routes_dep/` — четыре файла реализуют один эндпоинт. Для каталога приёмов это оправданно.
-
-Ненамеренные нарушения:
-
-- `datetime.now(timezone.utc)` дублируется как `default` в `time_stamp_utc` и как `onupdate` в модели `User` — при изменении часового пояса или перехода на `func.now()` править надо в двух местах;
-- логика «отсеять `None` из параметров» реализована двумя способами в соседних обработчиках: dict-comprehension с `if v is not None` в `get_order_filter_by` и `model_dump(exclude_none=True)` в `get_order_where`. Здесь это часть демонстрации, но второй вариант однозначно лучше;
-- `IntIdPkMixin` и `int_primary_key` решают одну задачу двумя способами.
-
-### KISS
-
-В основном соблюдается — сложность функций минимальна. Исключения:
-
-`get_all_join` содержит ветвление `variant`, существующее только для демонстрации, плюс жёстко зашитые индексы `[0]`/`[1]`. Для реального обработчика это лишняя сложность с побочным дефектом.
-
-`config_log.py` объявляет **шесть форматтеров** (`form1`–`form4`, `con1`, `con2`), из которых реально задействованы два. Остальные — закомментированные варианты, оставленные для сравнения.
-
-Параметры `request: Request = ...` и `response: Response = ...` во всех четырёх файлах `my_param_*.py` — `Ellipsis` избыточен, FastAPI определяет эти типы по аннотации.
-
-### Идиомы Python и FastAPI
-
-Соблюдаются на хорошем уровне. Отдельно стоит отметить корректное применение `@declared_attr.directive` (а не устаревшего `@declared_attr`), `async_sessionmaker` вместо `sessionmaker(class_=AsyncSession)`, `asynccontextmanager` для `lifespan` вместо устаревших `@app.on_event`.
-
-Отклонения:
-
-- имя `ConfigLogger.isSetting` — camelCase вместо `is_setting` (PEP 8);
-- `os.mkdir` + `os.path.exists` вместо `Path.mkdir(parents=True, exist_ok=True)`;
-- `logging.basicConfig(level=logging.INFO, handlers=[])` после `dictConfig` — избыточный вызов, способный конфликтовать с уже применённой конфигурацией;
-- в `main.py` строка `logF.warning(...)` стоит после блокирующего `uvicorn.run(...)`, то есть выполнится только при остановке сервера. Похоже на непреднамеренное размещение.
-
----
-
-## Дефекты реализации
-
-Приоритет P1 — приводит к отказу или утечке данных. P2 — работает неверно в граничных случаях.
-
-### P1-1. Пароль возвращается клиенту
-
-`example_sql/schemas/schema_user.py`:
-
-```python
-class UserCreate(BaseModel):
-    nickname: str
-    firstname: str
-    surname: str
-    password: str
-
-class UserResp(UserCreate):      # ← наследует password
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-```
-
-`UserResp` используется как `response_model` в обоих эндпоинтах `/users/*`. Следствие: `GET /users/get_all_users` отдаёт пароли **всех** пользователей, `POST /users/create_user` — пароль созданного. Пароли при этом хранятся в открытом виде — хеширования в проекте нет.
-
-Исправление: `UserResp` должен наследовать общую базу без `password`, а не `UserCreate`.
-
-```python
-class UserBase(BaseModel):
-    nickname: str
-    firstname: str
-    surname: str
-
-class UserCreate(UserBase):
-    password: str
-
-class UserResp(UserBase):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-```
-
-То же относится к `PostResp(PostCreate)` — там утечки секретов нет, но паттерн наследования схемы ответа от схемы запроса повторён.
-
-### P1-2. `validate_query_safe` падает на `None`
-
-`api/my_routes_dep/pydantic_validator.py`:
-
-```python
-@field_validator("query")
-@classmethod
-def validate_query_safe(cls, v: int | None) -> int | None:
-    if 1 <= v <= 1000:      # TypeError при v is None
-        return v
-    raise ValueError("либо None, либо число от 1 до 1000")
-```
-
-Поле объявлено `int | None = None`, но `None` не обрабатывается. Эндпоинт `/api/v1/depends_function_annotated/my_items/{item_id}` возвращает **500 на любой запрос без `param_id`** — то есть в дефолтном сценарии.
-
-Исправление: `if v is None or 1 <= v <= 1000: return v`.
-
-### P1-3. `OrderResp.promocode` не допускает NULL
-
-`ex_order_product/schema_order_product.py` объявляет `promocode: str`, тогда как колонка — `Mapped[str_len_50 | None]`. `POST /orders/add_order` без `promocode` создаст запись в БД и упадёт с 500 на сериализации ответа. Запись при этом останется — расхождение между фактическим состоянием БД и ответом API.
-
-Исправление: `promocode: str | None = None`.
-
-### P1-4. `get_all_join` падает при менее чем двух заказах
-
-`ex_order_product/router_order_one.py`:
-
-```python
-order0, order1 = result_scalars_all[0], result_scalars_all[1]
-```
-
-Индексы зашиты жёстко и нужны **только для логирования**. На пустой или односоставной таблице — `IndexError` → 500. Диагностический код в продакшн-пути.
-
-Исправление: убрать обращения по индексу, логировать через срез или `len()`.
-
-### P2-1. `TestUser` невидим для Alembic
-
-`db_core/__init__.py` реэкспортирует `User`, `Post`, `Order`, `Product`, `OrderProductAssociation`, но **не** `TestUser` из `example_sql/models/model_user_mix.py`. `alembic/env.py` берёт `target_metadata` из `db_core.Base`, поэтому при `alembic revision --autogenerate` таблица `test_users` в `Base.metadata` отсутствует. Если бы она существовала в БД, autogenerate сгенерировал бы `op.drop_table("test_users")`.
-
-Исправление: добавить `TestUser` в реэкспорт либо удалить модель, если она не нужна.
-
-### P2-2. `409 CONFLICT` вместо `404 NOT FOUND`
-
-Два обработчика (`get_order_filter_by`, `get_order_where`) возвращают `409` при отсутствии записи. `409` означает конфликт состояния (например, нарушение уникальности), а не отсутствие ресурса.
-
-### P2-3. `result.scalar()` без ограничения выборки
-
-`get_order_filter_by` при пустом наборе фильтров строит `select(Order)` без `WHERE`. `result.scalar()` на выборке из нескольких строк поднимет `MultipleResultsFound` → 500. Нужен `.limit(1)` либо `scalars().first()`.
-
-### P2-4. `validate_path_is_even` не соответствует ни имени, ни сообщению
-
-```python
-@field_validator("path")
-@classmethod
-def validate_path_is_even(cls, v: int) -> int:
-    if v < 0:
-        raise ValueError("Path - item_id должен быть больше 0")
-    return v
-```
-
-Три расхождения: имя обещает проверку чётности (её нет), сообщение говорит «больше 0», а условие пропускает `0`. Само ограничение уже задано на уровне `Path(ge=1)`, так что валидатор избыточен.
-
-### P2-5. Валидация порта клиента ломает ответ
-
-`RespAfterValid` и `RespDecorValid` валидируют поле `request` (порт клиента) диапазоном 1024–65535. Клиент с исходящим портом ниже 1024 получит 500 на валидации **ответа** — при полностью корректном запросе.
-
-### P2-6. `IntegrityError` не обрабатывается
-
-Кастомных обработчиков исключений в проекте нет. Нарушение `UniqueConstraint` (дублирующийся `nickname` в `POST /users/create_user`, дублирующаяся пара в `OrderProductAssociation`) даёт **500** вместо `409`.
-
----
-
-## Code smells
-
-| Smell | Где | Детали |
+| **S** — Single Responsibility | ★★★☆☆ | Роутеры `router_order_one.py` нарушают: содержат и роутинг, и SQL-запросы, и бизнес-логику. Роутеры `my_routes_dep/` — чистые. |
+| **O** — Open/Closed | ★★★★☆ | Добавление новых роутеров через `include_router` не требует изменения существующего кода. Новые модели добавляются через наследование от `Base`. |
+| **L** — Liskov Substitution | ★★★★☆ | `IntIdPkMixin` корректно расширяет `Base`. Pydantic-модели (`UserResp extends UserCreate`) — корректно. |
+| **I** — Interface Segregation | ★★★☆☆ | Нет формальных интерфейсов (Python). `BaseGreat` / `GreatHelper` / `GreatService` — минимальный пример, но `BaseGreat` не является абстрактным. |
+| **D** — Dependency Inversion | ★★★☆☆ | Роутеры зависят от абстракции `CurrentSession` (хорошо), но `db_manager` — конкретный класс, создаваемый глобально (плохо для тестирования). |
+
+### 2.2. DRY (Don't Repeat Yourself)
+
+| Участок | Нарушение | Степень |
 |---|---|---|
-| Закомментированный код как переключатель | `core/config.py:91-92` | Профиль БД выбирается комментированием строки, а не переменной окружения |
-| Закомментированные альтернативы | `cls_deps.py`, `dep_examp_cls.py`, `config_log.py` | Варианты `Depends(...)`, четыре неиспользуемых форматтера, блок логгеров uvicorn |
-| Мёртвый код | `cls_deps.py:48`, `cls_deps.py:92` | `path_reader` и `access_required` создаются на уровне модуля, но в роутах закомментированы |
-| Мёртвый код | `utils/docs.py` | `reg_docs_routes` не вызывается: `create_app(custom_docs_url=False)` |
-| Магические значения | `router_order_one.py`, `cls_deps.py` | Индексы `[0]`/`[1]`, токены `"qwerty-abc"`, `"foo-bar-fizz-buzz"` |
-| Диагностический вывод в бизнес-логике | все обработчики | `logF.info(f"{var=}")` — отладочный вывод, а не события домена |
-| Глаголы в URL | `/get_all_users`, `/add_order` | Действие дублирует HTTP-метод |
-| Числовые суффиксы в именах | `config_log.py` | `form1`–`form4`, `con1`, `con2`, `rotating_file1` не описывают назначение |
-| Смешение языков | повсеместно | Комментарии и `detail` в `HTTPException` на русском, код на английском. `detail` уходит клиенту в API-ответе |
-| Несогласованные настройки инструментов | `pyproject.toml` | `ruff: line-length = 100` против `black: line-length = 120`; `alembic.ini` post-write hook использует `black -l 79` — три разных значения |
-| Линтеры в основных зависимостях | `pyproject.toml` | `ruff` и `black` в `dependencies`, а не в dev-группе — попадут в прод-образ |
-| `F401` в глобальном ignore | `pyproject.toml` | Игнорирование неиспользуемых импортов скрывает реальный мусор; нужно точечное `__init__.py: ["F401"]` |
+| `my_param_*.py` (4 файла) | Четыре роутера с **идентичной** логикой handler-а (логирование, модификация Response, return-словарь). Различается только способ извлечения параметров. | Среднее — это сознательная демонстрация, но код можно сократить через общий декоратор или базовый handler. |
+| `pydantic_schema.py` vs `pydantic_validator.py` | Две пары response-моделей (`RespFieldStyle`/`RespAnnotated` и `RespAfterValid`/`RespDecorValid`) с одинаковыми полями — различается только способ валидации. | Низкое — демонстрационный код. |
+| Модификация Response (4 handler-а) | Одинаковый блок: `response.headers["X-Custom-Header"] = ...`, `response.set_cookie(...)` × 2. | Низкое. |
+
+### 2.3. KISS (Keep It Simple, Stupid)
+
+| Участок | Комментарий |
+|---|---|
+| `config_log.py` | Избыточно сложная конфигурация логирования: 6 форматов, 2 хендлера, 3 логгера — но в коде используется только `logF` ("OnlyFile"). Форматы `form1`, `form3`, `form4`, `con1` не используются. |
+| `schema_order_product.py` | 12 классов-схем, многие из которых не используются ни в одном роутере (`ProductRespWithOrders`, `ProductRespWithsAssoc`, `ProductRespWithOrdersAssoc`, `OrderRespWithAssoc`, `OrderRespWithProductsAssoc`, `OrderRespWithProductsDetails`). |
+| `router_order_one.py → get_all_join` | Ветвление `variant == 1 / else` с аннотациями типов и отладочным кодом, который обращается к `result_scalars_all[0]` и `[1]` — **упадёт** при пустом результате или одном заказе. |
+
+### 2.4. Идиомы Python
+
+| Аспект | Оценка | Детали |
+|---|---|---|
+| Type hints | ★★★★★ | Полная аннотация типов, `Annotated`, `Mapped[]`, PEP 604 (`X \| Y`). |
+| Async/await | ★★★★★ | Все I/O-операции асинхронные. |
+| Pathlib | ★★★★☆ | Используется `pathlib.Path` для путей, но `os.path.exists` / `os.mkdir` вместо `Path.exists()` / `Path.mkdir()`. |
+| `from __future__ import annotations` | ★★★★☆ | Используется в моделях, но не везде. |
+| Comprehensions | ★★★★★ | `filter_where = {k: v for k, v in ... if v is not None}` — идиоматично. |
+| `model_dump()` | ★★★★★ | Pydantic v2 API используется корректно. |
 
 ---
 
-## Узкие места (bottlenecks)
+## 3. Технический долг, code smells и узкие места
 
-Нагрузочного тестирования не проводилось; ниже — статический анализ.
+### 3.1. Технический долг
 
-**Пул соединений завышен относительно типового PostgreSQL.** `db_async.py`: `pool_size=50, max_overflow=10` → до 60 соединений на процесс. При `gunicorn --workers 4` это 240 соединений, тогда как дефолт `max_connections` в PostgreSQL — 100. Приложение исчерпает лимит БД раньше, чем упрётся в собственный пул.
-
-**Пул создаётся до fork.** `db_manager` инстанцируется при импорте `main`, то есть в мастер-процессе gunicorn **до** форка воркеров. Пулы `asyncpg` не переживают `fork()` корректно — соединения разделяются между процессами. Пул нужно создавать в `lifespan` либо в хуке `post_fork`.
-
-**`APP__DB__ECHO=1` в обоих `.env`.** SQLAlchemy пишет каждый SQL-запрос в stdout. Это заметная нагрузка на I/O и утечка данных в логи. Для демо приемлемо, для прода — нет.
-
-**`joinedload` на коллекции.** В `get_all_join` даёт декартово произведение строк (заказ × товар). На больших наборах `selectinload` эффективнее: два запроса вместо одного раздутого.
-
-**Отсутствие пагинации.** `get_all_users`, `get_all_orders`, `get_all_join` возвращают полные таблицы без `LIMIT`/`OFFSET`. Время ответа растёт линейно с объёмом данных.
-
-**`RotatingFileHandler` при нескольких воркерах.** Обработчик не синхронизирован между процессами: при `workers > 1` воркеры конкурируют за один файл, ротация теряет записи.
-
-**Индексы.** `int_primary_key` включает `index=True` (для PK избыточно — он и так индексирован). При этом на FK-колонках (`Post.user_id`, `OrderProductAssociation.order_id`/`product_id`) индексов нет, хотя именно они участвуют в JOIN. `UniqueConstraint` на паре `(order_id, product_id)` создаёт составной индекс, покрывающий поиск по `order_id`, но не по `product_id`.
-
-Отсутствие цикломатической сложности выше 3 и нулевое число циклов в графе вызовов означают, что горячих точек в вычислениях нет — все узкие места лежат в работе с БД и I/O.
-
----
-
-## Безопасность и надёжность
-
-### Критично
-
-**Пароли в открытом виде.** Хеширования нет: `User.password` — `Mapped[str_len_100]`, `crud_users.create_user` сохраняет значение как получено. В сочетании с P1-1 (пароль в ответе API) это полная компрометация учётных данных. Нужен `passlib`/`argon2` или `bcrypt`.
-
-**Секреты в репозитории.** В `.gitignore` строки `#*.env` и `#.env` **закомментированы**, поэтому `one.env` и `two.env` закоммичены. `one.env` содержит `postgresql+asyncpg://user:password@localhost:5432/shop` — строка подключения с парой логин/пароль находится в истории git. Удаление файла не поможет: нужна перезапись истории и ротация пароля.
-
-**Пароль БД в логах.** `create_fastapi.lifespan` логирует `settings.db.url` целиком. Для PostgreSQL-профиля пароль попадает в `log/one_fast.log`. Нужен `settings.db.url.host` или маскирование.
-
-### Существенно
-
-**Аутентификации нет.** Все 21 эндпоинт открыты. `HeaderAccessDependency` защищает единственный демонстрационный роут `/direct-cls-dependency`, `/users/*` и `/orders/*` — нет.
-
-**Сравнение токена уязвимо к timing-атаке.** `cls_deps.py`: `if token != self.secret_token`. Корректно — `secrets.compare_digest`.
-
-**Захардкоженные токены.** `"qwerty-abc"` в декораторе роута `dep_examp_cls.py` и `"foo-bar-fizz-buzz"` в `cls_deps.py:92`.
-
-**CORS, TrustedHost, ProxyHeaders не настроены.** Пользовательских middleware нет вообще. За nginx `request.client` вернёт IP прокси, несмотря на передаваемый `X-Forwarded-For` — а четыре обработчика `/my_items/{item_id}` возвращают `request.client.port` клиенту.
-
-**Rate limiting отсутствует.** Защиты от перебора и флуда нет.
-
-**Внутренние сообщения об ошибках уходят клиенту.** `detail` в `HTTPException` содержит русский текст с деталями фильтра — раскрывает внутреннюю структуру запроса.
-
-**Зависимость от внешнего CDN.** `utils/docs.py` тянет Swagger UI и ReDoc с `unpkg.com` без `integrity`-хешей. Сейчас ветка неактивна (`custom_docs_url=False`), но при включении получаем поставку исполняемого JS от третьей стороны без проверки целостности.
-
-**`docker-compose.yml`:** захардкоженные `POSTGRES_USER: user` / `POSTGRES_PASSWORD: password`. В отличие от `nginx_pg_admin.yml`, где секреты корректно вынесены в `${DB_USER}`/`${DB_PASSWORD}`.
-
-### Надёжность
-
-**Утечки ресурсов не обнаружено.** Сессии закрываются через `async with` в `get_async_session`, движок освобождается в `lifespan`. Единственная незакрытая ссылка — `PathReaderDependency._foobar` не сбрасывается после `yield` (строка закомментирована), но экземпляр создаётся на каждый запрос, поэтому утечки между запросами нет.
-
-**Валидация входа — сильная сторона.** Pydantic покрывает все параметры: `ge=1` на path, `EmailStr` в схемах, `Enum` для сортировки, ограничения длины на уровне колонок. Инъекции через параметры закрыты параметризованными запросами SQLAlchemy, инъекция через имя колонки — whitelist-подходом в `get_all_orders`.
-
-**Отсутствуют:**
-
-- health-check эндпоинт (`/health`, `/ready`) — оркестратор не может определить готовность;
-- retry и circuit breaker при недоступности БД — первый запрос после падения БД вернёт 500;
-- graceful shutdown с дренажом активных запросов — `engine_dispose()` вызывается без ожидания завершения обработчиков;
-- метрики (Prometheus) и трассировка;
-- проверка соединения с БД при старте — `create_async_engine` ленив, приложение стартует при недоступной БД и падает на первом запросе к данным;
-- volume для PostgreSQL в `docker-compose.yml` — данные теряются при пересоздании контейнера;
-- тесты — ни одного файла; отсутствие тестов означает, что все перечисленные P1-дефекты не были бы обнаружены автоматически.
-
----
-
-## Сводная таблица приоритетов
-
-| # | Дефект | Файл | Приоритет |
+| ID | Описание | Файл | Приоритет |
 |---|---|---|---|
-| 1 | Пароль в ответе API | `example_sql/schemas/schema_user.py` | P1 |
-| 2 | Пароли не хешируются | `example_sql/crud/crud_users.py`, модель `User` | P1 |
-| 3 | `.env` с паролем в git | `.gitignore` | P1 |
-| 4 | Пароль БД в логах | `create_fastapi.py` (`lifespan`) | P1 |
-| 5 | `validate_query_safe` падает на `None` | `api/my_routes_dep/pydantic_validator.py` | P1 |
-| 6 | `OrderResp.promocode` не допускает NULL | `ex_order_product/schema_order_product.py` | P1 |
-| 7 | `IndexError` в `get_all_join` | `ex_order_product/router_order_one.py` | P1 |
-| 8 | `pool_size=50` + пул до fork | `db_core/db_async.py` | P2 |
-| 9 | `IntegrityError` → 500 | нет обработчиков исключений | P2 |
-| 10 | `TestUser` невидим для Alembic | `db_core/__init__.py` | P2 |
-| 11 | `MultipleResultsFound` в `get_order_filter_by` | `ex_order_product/router_order_one.py` | P2 |
-| 12 | `409` вместо `404` | `ex_order_product/router_order_one.py` | P2 |
-| 13 | Валидация порта клиента ломает ответ | `api/my_routes_dep/pydantic_validator.py` | P2 |
-| 14 | `ECHO=1` в обоих профилях | `one.env`, `two.env` | P2 |
-| 15 | Логи uvicorn не в файле | `config_log.py` | P2 |
-| 16 | Нет пагинации | `router_users.py`, `router_order_one.py` | P2 |
-| 17 | Timing-атака на сравнение токена | `api/dependencies/cls_deps.py` | P3 |
-| 18 | Нет CORS/TrustedHost/ProxyHeaders | `create_fastapi.py` | P3 |
-| 19 | Нет health-check | `create_fastapi.py` | P3 |
-| 20 | Противоречия `line-length` | `pyproject.toml`, `alembic.ini` | P3 |
+| TD-1 | **Отсутствие слоя CRUD в `ex_order_product`** — SQL-запросы в роутере | `ex_order_product/router_order_one.py` | Высокий |
+| TD-2 | **Циклическая зависимость** `db_core/__init__.py` ↔ бизнес-модели | `db_core/__init__.py` | Высокий |
+| TD-3 | **Хардкод секретного токена** `"qwerty-abc"` в роутере | `api/dependencies/dep_examp_cls.py:96` | Средний |
+| TD-4 | **Хардкод токена** `"foo-bar-fizz-buzz"` в `access_required` | `api/dependencies/cls_deps.py:92` | Средний |
+| TD-5 | **Пароли в открытом виде** — поле `password` хранится как plain text в БД | `example_sql/models/model_user_post.py:37`, `example_sql/schemas/schema_user.py:12` | Высокий |
+| TD-6 | **Устаревший стиль Pydantic v1** — `class Config: from_attributes = True` вместо `model_config = ConfigDict(...)` | `ex_order_product/schema_order_product.py:71-72` | Средний |
+| TD-7 | **`Optional` / `List` из `typing`** вместо `X | None` / `list[X]` (PEP 604) | `ex_order_product/schema_order_product.py` | Низкий |
+| TD-8 | **Мёртвый код** — неиспользуемые схемы (6 классов), неиспользуемые форматы логов (4), закомментированные блоки uvicorn-логгеров | `schema_order_product.py`, `config_log.py` | Низкий |
+| TD-9 | **`model_user_mix.py` / `model_id_pk_mixin.py`** — `TestUser` не используется ни в роутерах, ни в миграциях | `example_sql/models/` | Низкий |
+| TD-10 | **Makefile**: цели `up` и `down` перепутаны местами (`up` делает `build`, `down` делает `up`) | `Makefile:17-21` | Средний |
 
+### 3.2. Code Smells
+
+| Smell | Где | Описание |
+|---|---|---|
+| **Shotgun Surgery** | `main.py` | Добавление нового модуля требует правки `main.py` (include_router) + `api/__init__.py` + создания пакета. Нет авто-регистрации. |
+| **Long Parameter List** | `my_param_*.py` | 6 параметров в каждом handler-е (path, query, header, cookie, request, response). |
+| **Data Class** | `helper.py` → `BaseGreat` | Класс без поведения, только данные (`as_dict` — единственный метод). |
+| **Dead Code** | `schema_order_product.py` | 6 из 12 response-схем не используются. |
+| **Commented-out Code** | `config_log.py:104-119`, `router_order_one.py:64,83,92-93`, `cls_deps.py:83,97` | Закомментированный код без объяснения. |
+| **Magic Numbers** | `router_order_one.py:130` | `variant: int = 1` — что значит 1? Нет Enum. |
+| **Inconsistent Error Codes** | `router_order_one.py` | `409 CONFLICT` для "not found" вместо `404`. |
+| **Mutable Default** | `schema_order_product.py:33` | `order_by_list: List[...] = ["id"]` — изменяемый дефолт в Pydantic (безопасно, но антипаттерн). |
+
+### 3.3. Узкие места (Bottlenecks)
+
+| Участок | Проблема | Влияние |
+|---|---|---|
+| `get_all_users` | `select(User).order_by(User.id)` без пагинации — загружает **все** записи | OOM при росте таблицы |
+| `get_all_orders` | `select(Order).order_by(...)` без пагинации — аналогично | OOM при росте |
+| `get_all_join` | `joinedload(Order.products)` без пагинации + `.unique().scalars().all()` — загружает все заказы со всеми продуктами | OOM + N+1 mitigated, но full table scan |
+| `pool_size=50` | Пул соединений по умолчанию — 50 соединений, max_overflow=10 | Избыточно для dev; может исчерпать соединения PostgreSQL при множестве воркеров gunicorn |
+| `get_async_session` | `expire_on_commit=False` — объекты остаются "живыми" после commit, но не обновляются | Может вернуть устаревшие данные при конкурентных записях |
+| `ConfigLogger` | Вызывается при **каждом** импорте `config_log` — `setting_path_logger` выполняется на уровне модуля | Глобальный side-effect при импорте |
+
+---
+
+## 4. Оценка безопасности и надёжности
+
+### 4.1. Безопасность
+
+| Категория | Оценка | Детали |
+|---|---|---|
+| **Аутентификация** | ★☆☆☆☆ | Нет аутентификации. `HeaderAccessDependency` — демонстрационная заглушка с хардкод-токеном. Все CRUD-роутеры (`/users`, `/orders`) **полностью открыты**. |
+| **Авторизация** | ★☆☆☆☆ | Отсутствует. Нет проверки прав доступа. |
+| **Хранение паролей** | ★☆☆☆☆ | Пароли хранятся в БД в **открытом виде**. Поле `password: Mapped[str_len_50 \| None]`. Нет хеширования (bcrypt/argon2). |
+| **CORS** | ★☆☆☆☆ | Не настроен. `CORSMiddleware` отсутствует. При prod-деплое браузерные клиенты не смогут обращаться к API. |
+| **SQL Injection** | ★★★★★ | Используется ORM SQLAlchemy с параметризованными запросами. `filter_by(**dict)` и `where(*list)` — безопасны. |
+| **Валидация входных данных** | ★★★★☆ | Pydantic-валидация на всех роутах. `model_dump(exclude_none=True)` корректно фильтрует None. Однако `ProductUpdateBody.price: int \| str = ""` — странный тип, допускающий строку. |
+| **Secrets в репозитории** | ★★☆☆☆ | `docker-compose.yml` содержит `POSTGRES_PASSWORD: password`. `one.env` содержит URL с паролем. Файлы не в `.gitignore` (проверить). |
+| **HTTPS/TLS** | ★★☆☆☆ | Nginx-конфигурация объявлена, но не интегрирована с приложением напрямую. Dev-запуск — HTTP. |
+
+### 4.2. Надёжность
+
+| Категория | Оценка | Детали |
+|---|---|---|
+| **Обработка ошибок БД** | ★★☆☆☆ | `rollback` есть в `get_async_session`, но нет кастомных exception handlers. `IntegrityError` → непонятный 500. |
+| **Idempotent operations** | ★★★☆☆ | `POST /insert_order` — неидемпотентный (каждый вызов создаёт новый заказ). Нет дедупликации. |
+| **Graceful shutdown** | ★★★★☆ | `lifespan` корректно вызывает `engine_dispose()`. Gunicorn `timeout=900` — долго, но безопасно. |
+| **Reconnection** | ★★☆☆☆ | Нет логики обработки разрыва соединения с БД. `asyncpg` имеет встроенный pool-recycling, но `pool_recycle` не настроен. |
+| **Health checks** | ★☆☆☆☆ | Нет `/health` или `/readiness` эндпоинта. |
+| **Rate limiting** | ★☆☆☆☆ | Отсутствует. |
+| **Тесты** | ★☆☆☆☆ | **Полностью отсутствуют.** Нет ни unit-тестов, ни integration-тестов, ни фикстур. |
+
+### 4.3. Утечки ресурсов
+
+| Риск | Файл | Описание |
+|---|---|---|
+| **Открытый курсор в SQLite** | `db_core/db_async.py:41-44` | `cursor.close()` вызывается, но при исключении в `cursor.execute` курсор не закрывается (нет `try/finally`). |
+| **Лог-файлы** | `config_log.py` | `RotatingFileHandler` с `backupCount=20` × `maxBytes=1MB` = максимум 20 MB. Не является утечкой, но нет архивации/компрессии. |
+| **Файловый дескриптор БД** | `db_async.py` | `engine_dispose()` вызывается только в `lifespan` shutdown. При аварийном завершении процесса (SIGKILL) соединения остаются открытыми до таймаута БД. |
+
+---
+
+## 5. Сводная оценка
+
+| Категория | Оценка | Краткое резюме |
+|---|---|---|
+| Читаемость | ★★★★☆ | Хороший стиль, избыточное логирование |
+| Модульность | ★★★★☆ | Чёткая структура, нарушение в `ex_order_product` |
+| Связность/Зацепление | ★★★☆☆ | Глобальные синглтоны, циклическая зависимость |
+| SOLID | ★★★☆☆ | SRP нарушен в роутерах orders, DI нарушен глобальными синглтонами |
+| DRY | ★★★☆☆ | Демонстрационное дублирование, мёртвый код |
+| KISS | ★★★☆☆ | Избыточная конфигурация логов, мёртвые схемы |
+| Безопасность | ★★☆☆☆ | Нет auth, пароли в открытом виде, нет CORS |
+| Надёжность | ★★☆☆☆ | Нет тестов, health-checks, exception handlers |
+| **Итого** | **★★★☆☆ (3/5)** | Сильная учебная база, требует продакшн-доработки |

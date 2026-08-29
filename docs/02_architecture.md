@@ -1,362 +1,316 @@
-# 02. Архитектура и паттерны
+# 02 — Архитектура и паттерны
 
-> Часть 2 из 4. См. также: [01_project_structure.md](01_project_structure.md), [03_execution_flow.md](03_execution_flow.md), [04_code_quality.md](04_code_quality.md)
-
-## Высокоуровневая архитектура
-
-**Монолитное асинхронное ASGI-приложение** с частично реализованной слоистой архитектурой. Единица развёртывания одна, внутренних сетевых границ нет, межсервисного взаимодействия нет.
-
-Слои, если идти сверху вниз:
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  Транспорт        uvicorn (dev) │ gunicorn + UvicornWorker (prod) │
-│                   опционально за nginx (TLS, reverse proxy)       │
-├──────────────────────────────────────────────────────────────────┤
-│  Композиция       create_fastapi.create_app() → main.main_app     │
-│                   include_router × 3, lifespan                    │
-├──────────────────────────────────────────────────────────────────┤
-│  Presentation     APIRouter'ы; pydantic-схемы запросов/ответов    │
-│                   валидация входа и сериализация выхода           │
-├──────────────────────────────────────────────────────────────────┤
-│  Dependency       Depends: сессия БД, извлечение параметров,      │
-│  Injection        проверка токена, фабрики сервисов               │
-├──────────────────────────────────────────────────────────────────┤
-│  Application      example_sql/crud/  ← присутствует               │
-│                   ex_order_product/  ← ОТСУТСТВУЕТ (SQL в роутах) │
-├──────────────────────────────────────────────────────────────────┤
-│  Data Access      AsyncDbManager, AsyncSession, ORM-модели        │
-├──────────────────────────────────────────────────────────────────┤
-│  Хранилище        PostgreSQL (asyncpg) │ SQLite (aiosqlite)       │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-**Ключевая асимметрия архитектуры:** слой приложения реализован только в домене `example_sql`. Домен `ex_order_product` обращается к `AsyncSession` напрямую из обработчиков, минуя этот слой. Оба подхода живут в одной кодовой базе; см. [04_code_quality.md](04_code_quality.md), раздел «Модульность».
-
-### Границы модулей
-
-`db_core/` — инфраструктурный слой без обратных зависимостей на предметные области, за одним исключением: `db_core/__init__.py` импортирует модели из `example_sql` и `ex_order_product`. Это **осознанный компромисс** — реэкспорт нужен, чтобы `Base.metadata` был заполнен к моменту запуска Alembic `--autogenerate`. Технически это циклическая зависимость на уровне пакетов, но она не проявляется в рантайме, потому что модели импортируют `db_core.model_base`, а не `db_core` целиком.
-
-`core/config.py` — самый нижний уровень: от него зависит почти всё (`db_core`, `api`, `create_fastapi`, `alembic/env.py`), он же не зависит ни от чего, кроме `base_dir_path`.
-
-`config_log.py` — полностью изолированная подсистема на уровне корня приложения. Не зависит от FastAPI, не интегрирована в его цикл логирования.
+> Документ описывает высокоуровневую архитектуру, паттерны проектирования,
+> поток данных и управление состоянием в проекте `my-fastapi-one`.
 
 ---
 
-## Паттерны проектирования
+## 1. Высокоуровневая архитектура
 
-### 1. Application Factory
+Проект представляет собой **монолитное модульное приложение** со **слоистой архитектурой**.
+Все компоненты выполняются в одном процессе; горизонтального масштабирования нет.
+Связь между слоями — через FastAPI Dependency Injection (синхронный граф зависимостей на каждый запрос).
 
-`create_fastapi.py:24` — единственное место создания экземпляра `FastAPI`:
-
-```python
-def create_app(custom_docs_url: bool = False) -> FastAPI:
-    docs_url, redoc_url = (None, None) if custom_docs_url else ("/docs", "/redoc")
-    app = FastAPI(
-        title="Example Request Parameters Extraction",
-        default_response_class=ORJSONResponse,
-        lifespan=lifespan,
-        docs_url=docs_url,
-        redoc_url=redoc_url,
-    )
-    if custom_docs_url:
-        reg_docs_routes(app)
-    return app
+```
+┌─────────────────────────────────────────────────────────┐
+│                    ТОЧКА ВХОДА                           │
+│  main.py (uvicorn)  /  main_gunicorn.py (gunicorn)      │
+└────────────────────────┬────────────────────────────────┘
+                         │
+         ┌───────────────▼───────────────┐
+         │    create_fastapi.py          │
+         │    create_app() — фабрика     │
+         │    lifespan, ORJSONResponse   │
+         └───────────────┬───────────────┘
+                         │
+    ┌────────────────────▼────────────────────┐
+    │              СЛОЙ API                    │
+    │  api/__init__.py  (router_api → /api)    │
+    │  ├── router_api_v1 → /api/v1             │
+    │  │   ├── dependencies/ → /api/v1/dep_examples
+    │  │   └── my_routes_dep/ → /api/v1/...    │
+    │  ├── example_sql/    → /users            │
+    │  └── ex_order_product/ → /orders         │
+    └────────────────────┬────────────────────┘
+                         │ Depends(CurrentSession)
+    ┌────────────────────▼────────────────────┐
+    │           СЛОЙ БАЗЫ ДАННЫХ               │
+    │  db_core/db_async.py                     │
+    │  AsyncDbManager → async_sessionmaker     │
+    │  → AsyncEngine → PostgreSQL / SQLite     │
+    └──────────────────────────────────────────┘
 ```
 
-Фабрика параметризована одним флагом, переключающим встроенную документацию на кастомную (`utils/docs.py`). Подключение роутеров вынесено **наружу** фабрики — в `main.py`, что делает `create_app()` пригодным для тестов с изолированным набором роутеров.
+### Характеристики
 
-### 2. Dependency Injection (основной паттерн проекта)
+| Характеристика | Значение |
+|---|---|
+| Тип архитектуры | Монолит, слоистая (layered) |
+| Парадигма I/O | Полностью асинхронная (async/await) |
+| Количество процессов | 1 (uvicorn) или N (gunicorn workers) |
+| Состояние | Stateless (состояние только в БД; сессии создаются на запрос) |
+| Связь между слоями | DI через `Annotated[T, Depends(...)]` |
 
-DI используется в трёх разных ролях:
+---
 
-**а) Инъекция ресурса — сессии БД.** Свёрнута в один переиспользуемый алиас (`db_core/db_async.py:78`):
+## 2. Основные паттерны проектирования
+
+### 2.1. Application Factory (Фабрика приложений)
+
+Файл: `fastapi-application/create_fastapi.py`
+
+`create_app(custom_docs_url: bool)` инкапсулирует создание экземпляра `FastAPI`:
+настройка `lifespan`, `default_response_class=ORJSONResponse`, опциональная регистрация
+кастомных docs-роутов через `reg_docs_routes(app)`. Это позволяет создавать несколько
+конфигураций приложения (например, для тестов и prod) с разными параметрами.
+
+### 2.2. Dependency Injection (Внедрение зависимостей)
+
+Проект демонстрирует **четыре** способа DI в FastAPI:
+
+| Способ | Файл | Механика |
+|---|---|---|
+| **Функция-зависимость** | `api/dependencies/func_deps.py`, `api/my_routes_dep/dep_func_schema.py` | `Depends(get_x_foo_bar)` — FastAPI вызывает функцию, результат инъецируется |
+| **Класс-зависимость (через `__init__`)** | `api/my_routes_dep/dep_cls_schema.py` | `Depends(PathData)` — FastAPI вызывает `__init__`, параметры конструктора резолвятся из запроса |
+| **Класс-зависимость (через `__call__`)** | `api/dependencies/cls_deps.py` → `HeaderAccessDependency` | `Depends(HeaderAccessDependency(secret_token="..."))` — экземпляр вызывается как callable |
+| **Метод-зависимость (generator)** | `api/dependencies/cls_deps.py` → `PathReaderDependency.as_dependency` | `Depends(path_reader.as_dependency)` — генератор с `yield`, cleanup после запроса |
+
+### 2.3. Session-per-Request (Сессия на запрос)
+
+Файл: `fastapi-application/db_core/db_async.py`
+
+`AsyncDbManager.get_async_session()` — асинхронный генератор, создающий сессию из
+`async_sessionmaker` на каждый запрос. При исключении выполняется `session.rollback()`.
+Сессия инъецируется через тип-алиас:
 
 ```python
 CurrentSession = Annotated[AsyncSession, Depends(db_manager.get_async_session)]
 ```
 
-Обработчики объявляют `db: CurrentSession` и не знают ни о фабрике сессий, ни о движке. Зависимость реализована генератором, что даёт точку teardown.
+Это позволяет любому роутеру получить сессию просто объявив параметр `session: CurrentSession`.
 
-**б) Dependency Factory (замыкание).** `api/dependencies/func_deps.py` — функция, возвращающая зависимость:
+### 2.4. Repository / CRUD-функции
 
-```python
-def get_header_dependency(header_name: str, default_value: str = ""):
-    def dependency(header: Annotated[str, Header(alias=header_name)] = default_value) -> str:
-        return header
-    return dependency
-```
+Файл: `fastapi-application/example_sql/crud/crud_users.py`
 
-Это обход ограничения FastAPI: имя заголовка нужно знать на этапе построения сигнатуры, а не в рантайме. Самая переиспользуемая зависимость в проекте — по графу вызовов у неё максимальный fan-in среди прикладных функций.
+CRUD-операции вынесены в отдельные асинхронные функции (`get_all_users`, `create_user`),
+принимающие `AsyncSession` как аргумент. Это упрощённый вариант паттерна Repository —
+без классов, но с чётким разделением: роутер → CRUD-функция → ORM.
 
-**в) Класс как зависимость.** Три варианта, все в `api/dependencies/`:
+> **Примечание:** модуль `ex_order_product` **не следует** этому паттерну — SQL-запросы
+> написаны прямо в роутере (`router_order_one.py`), что нарушает разделение слоёв.
 
-| Вариант | Реализация | Как объявляется |
-|---|---|---|
-| Класс с параметрами в `__init__` | `GreatService.__init__` объявляет `Header(...)` | `Depends(GreatService)` |
-| Экземпляр с `__call__` | `HeaderAccessDependency.__call__` | `Depends(HeaderAccessDependency(secret_token=...))` |
-| Метод-генератор экземпляра | `PathReaderDependency.as_dependency` | `Depends(PathReaderDependency(source=...).as_dependency)` |
+### 2.5. Annotated Type Aliases (Переиспользуемые типы)
 
-Третий вариант интересен тем, что конфигурация (`source`) фиксируется при создании экземпляра, а per-request данные (`Request`, заголовок) приходят через сигнатуру метода и сбрасываются после `yield`.
+Файлы: `db_core/type_for_models.py`, `api/my_routes_dep/pydantic_validator.py`
 
-### 3. Repository / Data Access Object — частично
+Колонки ORM и поля Pydantic-моделей объявляются через `Annotated`-алиасы:
+`int_primary_key`, `time_stamp_utc`, `str_len_50`, `PathID`, `QueryID`, `PortNumber`.
+Это паттерн **Type Composition** — переиспользование метаданных валидации и mapping-а.
 
-`example_sql/crud/crud_users.py` реализует функциональный вариант репозитория: модуль свободных функций, принимающих `session` первым аргументом.
+### 2.6. Mixin (для ORM-моделей)
 
-```python
-async def get_all_users(session: AsyncSession) -> Sequence[User]: ...
-async def create_user(session: AsyncSession, user_create: UserCreate) -> User: ...
-```
+Файл: `fastapi-application/example_sql/models/model_id_pk_mixin.py`
 
-Сессия передаётся извне, а не создаётся внутри — функции остаются тестируемыми и композируемыми в рамках одной транзакции. Однако `create_user` сам вызывает `session.commit()`, что делает невозможной композицию нескольких CRUD-операций в одну транзакцию.
+`IntIdPkMixin` предоставляет поле `id: Mapped[int]` с `primary_key=True`.
+Используется в `TestUser(IntIdPkMixin, Base)` — демонстрация множественного наследования
+для композиции ORM-моделей.
 
-В домене `ex_order_product` этот паттерн **не применён**: все шесть обработчиков в `router_order_one.py` строят `Select`/`Insert` и вызывают `db.execute()` напрямую.
+### 2.7. Adapter (адаптер gunicorn → ASGI)
 
-### 4. Declarative Base + Convention over Configuration
+Файл: `fastapi-application/core/gunicorn/gunicorn_app.py`
 
-`db_core/model_base.py` — имена таблиц выводятся из имён классов, а не задаются:
+`MyGunicornApp(BaseApplication)` адаптирует FastAPI-приложение для запуска под gunicorn,
+реализуя `load()` и `load_config()`.
 
-```python
-class Base(DeclarativeBase):
-    __abstract__ = True
-    metadata = MetaData(naming_convention=settings.db.naming_convention)
+### 2.8. Lifespan (управление жизненным циклом)
 
-    @declared_attr.directive
-    def __tablename__(cls) -> str:
-        return f"{camel_case_to_snake_case(cls.__name__)}s"
-```
+Файл: `fastapi-application/create_fastapi.py`
 
-`Order` → `orders`, `User` → `users`, `Product` → `products`. Конвенция ломается на `OrderProductAssociation` (дало бы `order_product_associations`), поэтому там `__tablename__` задан явно — иначе `secondary="order_product_association"` в `relationship` не нашёл бы таблицу.
-
-`naming_convention` в `MetaData` — это то, что делает имена констрейнтов детерминированными и, как следствие, автогенерируемые миграции воспроизводимыми. Видно в миграциях: `op.f("fk_order_product_association_order_id_orders")`, `op.f("pk_users")`.
-
-### 5. Type Aliasing для колонок (DRY на уровне схемы)
-
-`db_core/type_for_models.py` — повторяющиеся определения колонок вынесены в `Annotated`-типы:
-
-```python
-int_primary_key = Annotated[int, mapped_column(primary_key=True, index=True)]
-time_stamp_utc  = Annotated[datetime, mapped_column(DateTime(timezone=True),
-                            default=lambda: datetime.now(timezone.utc),
-                            server_default=func.now())]
-```
-
-Модели остаются декларативными: `id: Mapped[int_primary_key]`, `promocode: Mapped[str_len_50 | None]`.
-
-### 6. Mixin
-
-`example_sql/models/model_id_pk_mixin.py` — `IntIdPkMixin` как альтернатива `Annotated`-типу для того же PK. Применён только в `TestUser`; остальные модели используют `int_primary_key`. Два способа решения одной задачи сосуществуют — это демонстрационный, а не производственный выбор.
-
-### 7. Adapter (внешняя библиотека → внутренний интерфейс)
-
-`core/gunicorn/gunicorn_app.py` адаптирует программный запуск gunicorn:
-
-```python
-class MyGunicornApp(BaseApplication):
-    def load(self): return self.application
-
-    @property
-    def config_options(self) -> dict:
-        return {k: v for k, v in self.options.items()
-                if k in self.cfg.settings and v is not None}
-```
-
-`config_options` фильтрует опции по двум критериям: ключ известен gunicorn и значение не `None`. Это защищает от падения на незнакомой опции.
-
-### 8. Singleton через модульный уровень
-
-Идиоматичный для Python вариант: `settings` (`core/config.py:109`), `db_manager` (`db_async.py:69`), `logF`/`logFC` (`config_log.py:128`) создаются один раз при импорте модуля. Дополнительно `ConfigLogger` использует явный флаг однократной инициализации `isSetting`.
-
-**Следствие:** побочные эффекты при импорте. Импорт `core.config` читает `.env` и падает, если `db.url` не задан; импорт `config_log` создаёт директорию на диске; импорт `db_core.db_async` создаёт движок SQLAlchemy. Это ограничивает тестируемость — см. [04_code_quality.md](04_code_quality.md).
-
-### 9. Иерархия схем ответов (Composition через наследование)
-
-`ex_order_product/schema_order_product.py` строит дерево схем под разные стратегии загрузки связей:
-
-```
-OrderProductBase (from_attributes = True)
-└── OrderResp
-    ├── OrderRespWithProducts          products: List[ProductResp]
-    ├── OrderRespWithAssoc             products_details: List[AssociationResp]
-    ├── OrderRespWithProductsAssoc     оба поля
-    └── OrderRespWithProductsDetails   products: List[ProductRespWithsAssoc]
-```
-
-Каждая схема соответствует конкретному набору `joinedload`/`selectinload` в запросе. Позволяет контролировать глубину сериализации на уровне типов и не отдавать лишнего.
+`@asynccontextmanager async def lifespan(app)` — выполняет startup-логику (логирование)
+и shutdown-логику (`await db_manager.engine_dispose()` — освобождение пула соединений).
 
 ---
 
-## Поток данных
+## 3. Схема потока данных (Data Flow)
 
-### Чтение: `GET /orders/get_all_join`
+### 3.1. Запрос на создание пользователя (`POST /users/create_user`)
 
 ```
 Клиент
-  │  GET /orders/get_all_join?variant=1
-  ▼
-nginx (опционально) ── TLS, X-Forwarded-For ──────────────────────┐
-  ▼                                                              │
-uvicorn / gunicorn UvicornWorker                                 │
-  ▼                                                              │
-FastAPI: маршрутизация                                           │
-  │   main_app → r_order_one (prefix=/orders) → get_all_join      │
-  ▼                                                              │
-Разрешение зависимостей                                          │
-  │   db: CurrentSession → db_manager.get_async_session()         │
-  │   ├── session_factory() → AsyncSession                        │
-  │   └── yield session          ← точка входа в контекст         │
-  │   variant: int = 1  ← из query string, валидация pydantic     │
-  ▼                                                              │
-Обработчик get_all_join (router_order_one.py)                    │
-  │   select(Order).order_by(Order.id).options(joinedload(...))   │
-  ▼                                                              │
-AsyncSession.execute(stmt)                                       │
-  ▼                                                              │
-SQLAlchemy Core → компиляция SQL под диалект                     │
-  ▼                                                              │
-asyncpg / aiosqlite ── пул соединений (pool_size=50, overflow=10)│
-  ▼                                                              │
-PostgreSQL / SQLite: один SQL с LEFT OUTER JOIN                  │
-  │                                                              │
-  ▼ Result[tuple[Order]]                                         │
-.unique().scalars().all() → Sequence[Order]  ← dedup обязателен  │
-  │                          при joinedload на collection        │
-  ▼                                                              │
-response_model=list[OrderRespWithProducts]                       │
-  │   pydantic: from_attributes=True, обход ORM-объектов          │
-  ▼                                                              │
-ORJSONResponse ── сериализация orjson ────────────────────────────┘
-  ▼
-Клиент (JSON)
-
-После возврата ответа:
-  генератор get_async_session возобновляется → выход из
-  async with session_factory() → session.close()
-```
-
-### Запись: `POST /users/create_user`
-
-```
-Клиент: POST /users/create_user  {nickname, firstname, surname, password}
-  ▼
-FastAPI: r_users_sql → create_user
-  ▼
-Зависимости:
-  session: CurrentSession
-  user_create: Annotated[UserCreate, Body()]  ← валидация схемы
-  ▼
-Обработчик create_user (example_sql/router_users.py)
-  │  делегирует в слой приложения
-  ▼
-users_crud.create_user(session=session, user_create=user_create)
-  │  user = User(**user_create.model_dump())
-  │  session.add(user)
-  │  await session.commit()      ← транзакция фиксируется ЗДЕСЬ
-  │  await session.refresh(user) ← дочитывает id и server_default
-  ▼
-response_model=UserResp  ← ВНИМАНИЕ: наследует password, см. 04
-  ▼
-ORJSONResponse
-```
-
-### Обработка ошибок в потоке
-
-```
-Исключение в обработчике
   │
-  ├── HTTPException ──────────► FastAPI: JSON {"detail": ...} + статус
-  │                            (router_order_one.py: 409 CONFLICT)
-  │
-  ├── ValidationError (вход) ─► FastAPI: 422 + описание полей
-  │
-  ├── ValidationError (выход) ► 500 (response_model не сошёлся)
-  │
-  └── любое другое ───────────► get_async_session: except → rollback → raise
-                               │
-                               └─► ASGI: 500 Internal Server Error
+  │  POST /users/create_user  Body: {"nickname":"alice","password":"secret",...}
+  ▼
+┌──────────────────────────────────────────────────────────┐
+│  ASGI-сервер (uvicorn / gunicorn+UvicornWorker)           │
+│  Десериализация HTTP → Request-объект Starlette           │
+└──────────────────────────┬───────────────────────────────┘
+                           │
+  ┌────────────────────────▼──────────────────────────────┐
+  │  FastAPI middleware chain (встроенные)                 │
+  │  → сопоставление URL с зарегистрированным роутером     │
+  └────────────────────────┬──────────────────────────────┘
+                           │
+  ┌────────────────────────▼──────────────────────────────┐
+  │  router_order_one / router_users (APIRouter)           │
+  │  fastapi-application/example_sql/router_users.py       │
+  │  @r_users_sql.post("/create_user")                     │
+  └────────────────────────┬──────────────────────────────┘
+                           │
+           ┌───────────────▼───────────────┐
+           │  Dependency Resolution (DI)   │
+           │  1. CurrentSession            │
+           │     → db_manager              │
+           │       .get_async_session()    │
+           │     → async_sessionmaker()    │
+           │     → AsyncSession            │
+           │  2. Body() → UserCreate       │
+           │     (pydantic-валидация)      │
+           └───────────────┬───────────────┘
+                           │
+  ┌────────────────────────▼──────────────────────────────┐
+  │  CRUD-слой                                             │
+  │  example_sql/crud/crud_users.py → create_user()        │
+  │  user = User(**user_create.model_dump())               │
+  │  session.add(user) → await session.commit()            │
+  │  → await session.refresh(user)                         │
+  └────────────────────────┬──────────────────────────────┘
+                           │
+           ┌───────────────▼───────────────┐
+           │  SQLAlchemy AsyncEngine        │
+           │  → asyncpg / aiosqlite         │
+           │  → PostgreSQL / SQLite         │
+           └───────────────┬───────────────┘
+                           │
+  ┌────────────────────────▼──────────────────────────────┐
+  │  Response-сериализация                                 │
+  │  response_model=UserResp → pydantic from_attributes    │
+  │  → ORJSONResponse → orjson.dumps() → JSON              │
+  └────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+                        Клиент
 ```
 
-`get_async_session` перехватывает **любое** исключение, откатывает транзакцию и пробрасывает дальше. Commit при этом остаётся ответственностью вызывающего кода.
+### 3.2. Запрос с joinedload (`GET /orders/get_all_join`)
+
+```
+Клиент → GET /orders/get_all_join?variant=1
+  │
+  ▼
+router_order_one.py → get_all_join()
+  │  stmt = select(Order).order_by(Order.id)
+  │           .options(joinedload(Order.products))
+  │  await db.execute(stmt)
+  │  result.unique().scalars().all()
+  │
+  ├──→ SQL: SELECT orders.*, products.*, association.*
+  │         FROM orders
+  │         LEFT OUTER JOIN order_product_association AS assoc
+  │           ON orders.id = assoc.order_id
+  │         LEFT OUTER JOIN products
+  │           ON assoc.product_id = products.id
+  │         ORDER BY orders.id
+  │
+  ▼
+OrderRespWithProducts (response_model)
+  → сериализация с вложенными products: List[ProductResp]
+  → ORJSONResponse
+```
 
 ---
 
-## Управление состоянием
+## 4. Управление состоянием, кэшированием и конфигурацией
 
-Приложение **stateless на уровне процесса**: всё состояние в БД. Разделяемых изменяемых структур в памяти нет. Практическое следствие — горизонтальное масштабирование ограничено только БД.
+### 4.1. Управление состоянием
 
-Исключения из stateless-правила, о которых нужно знать:
-
-| Объект | Область жизни | Замечание |
+| Уровень | Механизм | Файл |
 |---|---|---|
-| `db_manager.engine` | Процесс | Пул соединений. При `workers > 1` каждый воркер создаёт свой пул: реальный лимит = `workers × (pool_size + max_overflow)` |
-| `path_reader` (`cls_deps.py:48`) | Процесс | Экземпляр `PathReaderDependency`, созданный на уровне модуля. Хранит `_request`/`_foobar` в атрибутах. В роуте **не используется** (закомментирован) — вместо него создаётся новый экземпляр на каждый запрос |
-| `ConfigLogger.isSetting` | Процесс | Флаг однократной инициализации логгера |
-| `settings` | Процесс | Иммутабелен по факту использования; перечитывания env в рантайме нет |
+| **Глобальное (процесс)** | `settings = Settings()` — синглтон конфигурации, создаётся при импорте | `core/config.py` |
+| **Глобальное (процесс)** | `db_manager = AsyncDbManager(...)` — синглтон engine + sessionmaker, создаётся при импорте | `db_core/db_async.py` |
+| **На запрос** | `AsyncSession` через `get_async_session()` — изолированная сессия БД | `db_core/db_async.py` |
+| **На запрос** | `Request` / `Response` объекты Starlette — доступны через DI | роутеры |
+| **В БД** | Все бизнес-данные (users, posts, orders, products) | PostgreSQL / SQLite |
 
-Кэширования в проекте нет: ни `functools.lru_cache`, ни `fastapi_cache`, ни клиента Redis. Redis объявлен в `nginx_pg_admin.yml`, но приложение к нему не подключается.
+Кэширование **отсутствует**. Redis объявлен в `nginx_pg_admin.yml`, но не интегрирован в код.
 
----
+### 4.2. Управление конфигурацией
 
-## Управление конфигурацией
+Файл: `fastapi-application/core/config.py`
 
-### Механизм
-
-`core/config.py` — `pydantic-settings` с вложенными моделями:
+Конфигурация построена на `pydantic-settings` (`BaseSettings`):
 
 ```python
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(
-            BASE_DIR / "two.env",   # sqlite   ← активный профиль
-            # BASE_DIR / "one.env", # postgres ← закомментирован
-            BASE_DIR / ".env",
-        ),
-        case_sensitive=False,
-        env_prefix="APP__",
-        env_nested_delimiter="__",
+        env_file=(BASE_DIR / "two.env", BASE_DIR / ".env"),  # порядок приоритета
+        env_prefix="APP__",          # все переменные начинаются с APP__
+        env_nested_delimiter="__",   # вложенность через __ (APP__DB__URL → settings.db.url)
     )
-    logging_gunicorn: LoggingConfigGunicorn = LoggingConfigGunicorn()
-    gunicorn: GunicornConfig = GunicornConfig()
-    run: RunConfig = RunConfig()
-    api: ApiPrefix = ApiPrefix()
-    db: DatabaseConfig          # ← единственное обязательное поле
 ```
 
-Правило отображения env → атрибут: `APP__DB__URL` → `settings.db.url`, `APP__GUNICORN__WORKERS` → `settings.gunicorn.workers`.
-
-Приоритет источников (стандартный для pydantic-settings, от высшего к низшему): переменные окружения процесса → `.env` → `two.env`. Файлы в кортеже `env_file` перечитываются слева направо, каждый следующий **переопределяет** предыдущий; `.env` стоит последним и потому имеет наивысший приоритет среди файлов.
-
-### Дерево префиксов маршрутов
-
-Префиксы не хардкодятся в роутерах, а берутся из `settings.api`:
-
-| Настройка | Значение | Применяется в |
+| Подсистема | Класс | Ключевые поля |
 |---|---|---|
-| `api.prefix` | `/api` | `api/__init__.py` → `router_api` |
-| `api.v1.prefix` | `/v1` | `api/__init__.py` → `router_api_v1` |
-| `api.v1.dep_examples` | `/dep_examples` | подключение `router_dep_examples` |
-| `api.v1.fastapi_class_old` | `/fastapi_class_old` | `my_routes_dep/__init__.py` |
-| `api.v1.fastapi_class_annotated` | `/fastapi_class_annotated` | `my_routes_dep/__init__.py` |
-| `api.v1.depends_class_annotated` | `/depends_class_annotated` | `my_routes_dep/__init__.py` |
-| `api.v1.depends_function_annotated` | `/depends_function_annotated` | `my_routes_dep/__init__.py` |
-| `api.user_post_prefix` | `/users` | `example_sql/router_users.py` |
-| `api.order_product_prefix` | `/orders` | `ex_order_product/router_order_one.py` |
+| Запуск (dev) | `RunConfig` | `host`, `port` |
+| Gunicorn (prod) | `GunicornConfig` | `host`, `port`, `workers`, `timeout` |
+| База данных | `DatabaseConfig` | `url` (PostgresDsn \| SqliteDsn), `echo`, `pool_size`, `max_overflow`, `naming_convention` |
+| API-префиксы | `ApiPrefix` → `ApiV1Prefix` | `/api`, `/v1`, `/users`, `/orders`, имена подроутеров |
+| Логирование gunicorn | `LoggingConfigGunicorn` | `log_level`, `log_format` |
 
-**Важно:** `r_users_sql` и `r_order_one` подключаются напрямую к `main_app` в `main.py`, а не через `router_api`. Их итоговые пути — `/users/...` и `/orders/...`, **без** `/api/v1`. Версионирование покрывает только демонстрационную часть.
+### 4.3. Переключение БД
 
-### Профили окружения
+В `config.py` указано `env_file=(BASE_DIR / "two.env", BASE_DIR / ".env")`.
+- `two.env` → SQLite (`sqlite+aiosqlite:///./one_simple.db`) — активен по умолчанию.
+- `one.env` → PostgreSQL (`postgresql+asyncpg://user:password@localhost:5432/shop`) — закомментирован в `config.py`.
 
-| Профиль | Файл | URL БД |
-|---|---|---|
-| SQLite (активен) | `two.env` | `sqlite+aiosqlite:///./one_simple.db` |
-| PostgreSQL | `one.env` | `postgresql+asyncpg://user:password@localhost:5432/shop` |
+Для переключения нужно изменить `env_file` в `config.py` или создать `.env` с переопределением `APP__DB__URL`.
 
-Переключение выполняется **правкой исходного кода** — комментированием/раскомментированием строк в `core/config.py:91-92`. Это не конфигурируется извне, что противоречит остальному дизайну и создаёт риск при развёртывании; см. [04_code_quality.md](04_code_quality.md).
+### 4.4. Naming Convention для БД
 
-Оба `.env`-файла **закоммичены в git**: в `.gitignore` строки `#*.env` и `#.env` закомментированы. Соответственно, строка подключения с парой `user:password` находится в истории репозитория.
+`DatabaseConfig.naming_convention` задаёт единые правила именования约束:
+`ix_`, `uq_`, `ck_`, `fk_`, `pk_` — используются в Alembic-миграциях и `MetaData`.
 
-### Конфигурация инфраструктуры
+---
 
-`nginx_pg_admin.yml` читает переменные из окружения docker-compose (`${DB_USER}`, `${DB_PASSWORD}`, `${DB_NAME}`, `${PGADMIN_EMAIL}`, `${PGADMIN_PASSWORD}`) — здесь секреты вынесены наружу корректно. Требует внешней сети `app_net_new` (создаётся `make create-net` или `./adminDock.sh net-create`) и статических IP в подсети `172.20.0.0/16`, на которые ссылается `nginx.conf`.
+## 5. Структура роутеров (Routing Map)
 
-`docker-compose.yml` (dev) наоборот содержит захардкоженные `POSTGRES_USER: user` / `POSTGRES_PASSWORD: password` и **не объявляет volume** — данные PostgreSQL теряются при пересоздании контейнера.
+```
+/ (корень)
+├── /docs                         # Swagger UI (custom или дефолтный)
+├── /redoc                        # ReDoc
+├── /docs/oauth2-redirect         # OAuth2 redirect для Swagger
+│
+├── /api                          # router_api
+│   └── /v1                       # router_api_v1
+│       ├── /dep_examples         # router_dep_examples
+│       │   ├── /single-direct-dependency
+│       │   ├── /single-via-func
+│       │   ├── /multi-direct-and-via-func
+│       │   ├── /multi-indirect
+│       │   ├── /top-level-helper-creation
+│       │   ├── /helper-as-dependency
+│       │   ├── /great-service-as-dependency
+│       │   ├── /path-reader-dependency-from-method
+│       │   └── /direct-cls-dependency
+│       │
+│       ├── /fastapi_class_old            # router_param_fast_cls_old
+│       │   └── /my_items/{item_id}       (GET)
+│       ├── /fastapi_class_annotated      # router_param_fast_cls
+│       │   └── /my_items/{item_id}       (GET)
+│       ├── /depends_class_annotated      # router_param_dep_cls
+│       │   └── /my_items/{item_id}       (GET)
+│       └── /depends_function_annotated   # router_param_dep_func
+│           └── /my_items/{item_id}       (GET)
+│
+├── /users                        # r_users_sql
+│   ├── /get_all_users            (GET)
+│   └── /create_user              (POST)
+│
+└── /orders                       # r_order_one
+    ├── /add_order                (POST)
+    ├── /insert_order             (POST)
+    ├── /get_order_filter_by      (GET)
+    ├── /get_order_where          (GET)
+    ├── /get_all_orders           (GET)
+    └── /get_all_join             (GET)
+```
