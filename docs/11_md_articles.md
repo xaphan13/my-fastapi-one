@@ -39,7 +39,7 @@ fastapi-application/
 │   ├── new_art/           # art_home, art_author, art_manage
 │   └── layout.html, about.html, login.html, register.html, account.html
 └── static/
-    ├── art_css/           # base.css, scripts.js — копия 1:1 из Flask-версии
+    ├── art_css/           # base.css, scripts.js (порт из Flask-версии, доработаны)
     └── profile_pics/      # default.jpg (125×125) + загруженные аватары
 ```
 
@@ -52,7 +52,7 @@ fastapi-application/
 |---|---|---|---|
 | `/`, `/home` | GET | `main.home` | — (редирект на `/art_home`) |
 | `/about` | GET | `main.about` | — |
-| `/art_home` | GET | `art_main.art_home` | — |
+| `/art_home` | GET, POST | `art_main.art_home` | — |
 | `/art/{author}/{art_id}` | GET | `art_main.art_author` | — |
 | `/art_manage` | GET | `art_main.art_manage` | только авторизованный |
 | `/art_manage/add_all` | POST | `art_main.art_manage_add_all` | только авторизованный + CSRF |
@@ -65,9 +65,9 @@ fastapi-application/
 Маршрут `/createDB` из Flask-версии НЕ переносился: таблицы `blog_user`/`blog_post`
 создаёт Alembic-миграция `b59cbdf15878` (третья ревизия, поверх `35ae229e79dd`).
 
-Всего маршрутов приложения: 41 route-объект (25 старых + 15 объектов блога: 11 имён,
-где пары GET/POST у `/register`, `/login`, `/account` и пара `/`+`/home` дают по
-отдельному объекту + 1 mount `/static`). Быстрая проверка:
+Всего маршрутов приложения: 42 route-объекта (25 старых + 16 объектов блога: 11 имён,
+где пары GET/POST у `/register`, `/login`, `/account`, `/art_home` и пара
+`/`+`/home` дают по отдельному объекту + 1 mount `/static`). Быстрая проверка:
 `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"`.
 
 ## Архитектура и слои
@@ -116,8 +116,11 @@ fastapi-application/
 | remember-me менял срок cookie | чекбокс остался в разметке; срок сессии фиксированный 14 дней |
 
 Что перенесено без изменений: дизайн (Bootstrap 5.3.8 + highlight.js с CDN и SRI),
-`static/art_css/base.css` и `scripts.js` (байт-в-байт), реестр `articles.yaml`,
+реестр `articles.yaml`,
 логика фильтрации неполных записей (`_is_complete`), тексты flash-сообщений.
+`static/art_css/base.css` и `scripts.js` изначально перенесены 1:1, позже
+доработаны: добавлены темы `midnight`/`aurora` и селектор темы
+(см. `tasks/002-two-dark-themes/`).
 
 ## Проверка работоспособности
 

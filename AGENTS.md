@@ -59,10 +59,10 @@
 | `router_users` | `md_articles/routes_users.py` | `/` | блог: register/login/logout/account |
 | `router_articles` | `md_articles/routes_articles.py` | `/` | блог: `/art_home`, `/art/{author}/{art_id}`, `/art_manage*` |
 
-Итого 41 route-объект: 25 старых (21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
+Итого 42 route-объекта: 25 старых (21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
 `/docs/oauth2-redirect` — кастомные Swagger/ReDoc регистрирует `utils/docs.py`) +
-15 объектов блога (11 имён: пары GET/POST у `/register`, `/login`, `/account` и пара
-`/`+`/home` дают по отдельному объекту) + mount `/static`.
+16 объектов блога (11 имён: пары GET/POST у `/register`, `/login`, `/account`,
+`/art_home` и пара `/`+`/home` дают по отдельному объекту) + mount `/static`.
 
 ```
 my-fastapi-one/                 <- корень репозитория; здесь запускается qwen-code
@@ -174,7 +174,7 @@ Ruff и black объявлены в зависимостях проекта — 
 Тестов нет, поэтому изменения проверяются запуском самого приложения:
 
 ```bash
-cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # ожидается 41
+cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # ожидается 42
 ../.venv/bin/uvicorn main:main_app --port 8000    # затем curl:
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/docs
 curl -s http://127.0.0.1:8000/api/v1/dep_examples/single-direct-dependency
@@ -356,7 +356,7 @@ nginx находятся в `.gitignore` — никогда не добавля�
 | Агент | Зона (можно редактировать) | Чем проверяет изменения | Особые запреты |
 |---|---|---|---|
 | frontend-dev | `nginx/web/`, а также Jinja2-шаблоны и статика блога: `fastapi-application/templates/` (кроме контента `content_art/` — статьи кладёт пользователь), `fastapi-application/static/` | просмотр страницы; если задание требует — curl через поднятое приложение; скриншот в `tasks/current/screenshots/` | Python-модули `fastapi-application/` — зона backend-dev |
-| backend-dev | Python-модули `fastapi-application/` (включая `alembic/`, env-профили, `md_articles/`) | `uv run ruff check .`; `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` (ожидается 41); curl изменённых эндпоинтов на запущенном приложении | `nginx/web/`, `fastapi-application/templates/`, `fastapi-application/static/`; устаревшие API из раздела «Известные дефекты» — не чинить без отдельного задания; дублирование `api/my_routes_dep/` — намеренное; поведение блога `md_articles/` — порт flask-blog-1, «улучшательства» без отдельного задания запрещены |
+| backend-dev | Python-модули `fastapi-application/` (включая `alembic/`, env-профили, `md_articles/`) | `uv run ruff check .`; `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` (ожидается 42); curl изменённых эндпоинтов на запущенном приложении | `nginx/web/`, `fastapi-application/templates/`, `fastapi-application/static/`; устаревшие API из раздела «Известные дефекты» — не чинить без отдельного задания; дублирование `api/my_routes_dep/` — намеренное; поведение блога `md_articles/` — порт flask-blog-1, «улучшательства» без отдельного задания запрещены |
 | qa | `tasks/current/e2e/`, `tasks/current/DEFECTS.md`, `tasks/current/screenshots/` | curl-сценарии из критериев успеха текущего задания; регресс: `/docs`, `/users/get_all_users`, `/orders/get_all_orders`, один из `/api/v1/dep_examples/*`, `/art_home` | любой код продукта |
 | adversary | `tasks/current/ADVERSARIAL_REVIEW.md`, `tasks/current/screenshots/` | curl по запущенному приложению; логи `fastapi-application/log/` | всё, кроме своих файлов |
 | spec-writer | `tasks/current/REQUIREMENTS.md` — только на фазе создания задания, одним `write_file` по шаблону `.qwen/skills/task-spec/TEMPLATE.md` | чек-лист скилла `task-spec` (проверяет оркестратор) | код продукта; всё, кроме REQUIREMENTS.md на фазе создания |

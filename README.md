@@ -60,9 +60,9 @@ disposition adversary, участники), а в свежую заглушку 
 
 ## Возможности
 
-- 41 route-объект: 25 старых (21 API-эндпоинт плюс служебные `/docs`, `/redoc`,
+- 42 route-объекта: 25 старых (21 API-эндпоинт плюс служебные `/docs`, `/redoc`,
   `/openapi.json`, `/docs/oauth2-redirect` — кастомный Swagger/ReDoc на CDN через
-  `utils/docs.py`) + 15 объектов блога + mount `/static`.
+  `utils/docs.py`) + 16 объектов блога + mount `/static`.
 - Демонстрация 9 способов `Depends`: функции, классы с `__call__`, метод-генератор с
   teardown, фабрики зависимостей, вложенные зависимости.
 - Один эндпоинт `/my_items/{item_id}` в четырёх стилях: `Path()/Query()/Header()/Cookie()`
@@ -163,7 +163,7 @@ Env-файлы лежат в `fastapi-application/` и **закоммичены*
 
 ## Маршруты
 
-41 route-объект всего (проверка: `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` → `41`; 25 старых + 15 объектов блога: 11 имён, где пары GET/POST и `/`+`/home` дают по отдельному объекту + 1 mount `/static`).
+42 route-объекта всего (проверка: `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` → `42`; 25 старых + 16 объектов блога: 11 имён, где пары GET/POST и `/`+`/home` дают по отдельному объекту + 1 mount `/static`).
 
 | Методы | Маршрут | Назначение |
 |---|---|---|
@@ -246,7 +246,7 @@ docker compose -f nginx_pg_admin.yml up -d
 
 ```bash
 uv run ruff check .                                                        # линтер (ruff в зависимостях)
-cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # 41
+cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # 42
 cd fastapi-application && ../.venv/bin/uvicorn main:main_app --port 8000    # затем curl /docs, /users/get_all_users, /art_home
 ```
 

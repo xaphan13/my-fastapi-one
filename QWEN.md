@@ -58,10 +58,10 @@
 | `router_users` | `md_articles/routes_users.py` | `/` | блог: register/login/logout/account |
 | `router_articles` | `md_articles/routes_articles.py` | `/` | блог: `/art_home`, `/art/{author}/{art_id}`, `/art_manage*` |
 
-Итого 41 route-объект: 25 старых (21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
+Итого 42 route-объекта: 25 старых (21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
 `/docs/oauth2-redirect` — кастомные Swagger/ReDoc регистрирует `utils/docs.py`) +
-15 объектов блога (11 имён: пары GET/POST у `/register`, `/login`, `/account` и пара
-`/`+`/home` дают по отдельному объекту) + mount `/static`.
+16 объектов блога (11 имён: пары GET/POST у `/register`, `/login`, `/account`,
+`/art_home` и пара `/`+`/home` дают по отдельному объекту) + mount `/static`.
 
 ```
 my-fastapi-one/                 <- корень репозитория; здесь запускается qwen-code
@@ -172,7 +172,7 @@ Ruff и black объявлены в зависимостях проекта — 
 Тестов нет, поэтому изменения проверяются запуском самого приложения:
 
 ```bash
-cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # ожидается 41
+cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # ожидается 42
 ../.venv/bin/uvicorn main:main_app --port 8000    # затем curl:
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/docs
 curl -s http://127.0.0.1:8000/api/v1/dep_examples/single-direct-dependency
