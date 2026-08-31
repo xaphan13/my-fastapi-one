@@ -32,7 +32,7 @@ class ArticleLang(BaseModel):
 # ------------------------------------------------------------------------
 def get_path_dir() -> Path:
     """Каталог с .md-файлами статей (привязан к BASE_DIR, не к cwd)."""
-    return BASE_DIR / "templates" / "content_art"
+    return BASE_DIR / "content_art"
 
 
 def read_html(name_html: str, name_dir: Path | None = None) -> str:

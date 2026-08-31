@@ -1,0 +1,567 @@
+@import "tailwindcss";
+
+/* Стили сайта на CSS-переменных, 4 темы: dark (дефолт), light, midnight, aurora.
+   Тема применяется атрибутом data-theme на <html> (hooks/useTheme.ts),
+   переключение мгновенное, без перезагрузки.
+   Подсветка кода — внешний highlight.js с CDN: активная тёмная таблица
+   переключается по disabled у <link data-hljs-dark> (hooks/useHljsTheme.ts),
+   код всегда на тёмном фоне в любой теме сайта. */
+
+:root {
+  --header-height: 4rem;
+  --radius: 0.75rem;
+}
+
+/* === Тема «Тёмная» (дефолт) ================================================ */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1e1e1e;
+  --text: #e0e0e0;
+  --text-muted: #a0a0a0;
+  --border: #3a3a3a;
+  --card-bg: #2a2a2a;
+  --link: #61dafb;
+  --link-hover: #9b59b6;
+  --accent: #61dafb;
+  --accent-2: #ff6f61;
+  --header-bg: linear-gradient(135deg, #354754 0%, #2a3a46 100%);
+  --header-link: #cbd5db;
+  --header-link-hover: #ffffff;
+  --footer-bg: #232323;
+  --focus-ring: rgba(97, 218, 251, 0.35);
+  --btn-grad: linear-gradient(135deg, #61dafb 0%, #9b59b6 100%);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* === Тема «Светлая» ======================================================== */
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f7f3ec;
+  --text: #212529;
+  --text-muted: #6c757d;
+  --border: #e0d8cc;
+  --card-bg: #fffdf8;
+  --link: #2563eb;
+  --link-hover: #1d4ed8;
+  --accent: #2563eb;
+  --accent-2: #c0338e;
+  --header-bg: linear-gradient(135deg, #354754 0%, #2a3a46 100%);
+  --header-link: #e9ecef;
+  --header-link-hover: #ffffff;
+  --footer-bg: #ede8de;
+  --focus-ring: rgba(37, 99, 235, 0.35);
+  --btn-grad: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  --shadow: 0 10px 30px rgba(33, 37, 41, 0.12);
+}
+
+/* === Тема «Полночь» ========================================================
+   Глубокий сине-фиолетовый, фирменный градиент фиолетовый -> розовый. */
+
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #0f0d1c;
+  --text: #dcd8f0;
+  --text-muted: #9a92c0;
+  --border: #2e2a4d;
+  --card-bg: #1a1730;
+  --link: #a78bfa;
+  --link-hover: #c4b5fd;
+  --accent: #a78bfa;
+  --accent-2: #f0abfc;
+  --header-bg: linear-gradient(135deg, #1a1730 0%, #221e3f 60%, #2b1a4a 100%);
+  --header-link: #cfc9ec;
+  --header-link-hover: #ffffff;
+  --footer-bg: #14112a;
+  --focus-ring: rgba(167, 139, 250, 0.4);
+  --btn-grad: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  --shadow: 0 10px 30px rgba(139, 92, 246, 0.18);
+}
+
+/* === Тема «Аврора» =========================================================
+   Тёмно-изумрудная с холодным бирюзовым акцентом. */
+
+[data-theme="aurora"] {
+  color-scheme: dark;
+  --bg: #0a1412;
+  --text: #d4e4dd;
+  --text-muted: #8fb3a3;
+  --border: #1f3a2e;
+  --card-bg: #122019;
+  --link: #34d399;
+  --link-hover: #6ee7b7;
+  --accent: #34d399;
+  --accent-2: #5eead4;
+  --header-bg: linear-gradient(135deg, #0f1c15 0%, #122019 60%, #12352a 100%);
+  --header-link: #bfe0d0;
+  --header-link-hover: #ffffff;
+  --footer-bg: #0d1a12;
+  --focus-ring: rgba(52, 211, 153, 0.4);
+  --btn-grad: linear-gradient(135deg, #10b981 0%, #22d3ee 100%);
+  --shadow: 0 10px 30px rgba(16, 185, 129, 0.16);
+}
+
+/* === Базовая типографика =================================================== */
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  margin: 0;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--link-hover);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* === Шапка ================================================================= */
+
+.site-header {
+  background: var(--header-bg);
+  box-shadow: var(--shadow);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.3s ease;
+}
+
+.header-inner {
+  min-height: var(--header-height);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+.brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.brand:hover {
+  color: #fff;
+  text-decoration: none;
+}
+
+.brand-accent {
+  background: var(--btn-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+
+.nav-link {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  color: var(--header-link);
+  font-weight: 500;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  color: var(--header-link-hover);
+  background: rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+}
+
+.nav-link.active {
+  color: var(--header-link-hover);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-link.as-button {
+  font-family: inherit;
+}
+
+.header-selects {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-select {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  border-radius: 9999px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.theme-select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}
+
+.theme-select option {
+  color: #1e1e1e;
+  background: #f7f3ec;
+}
+
+/* === Контент, карточки, футер ============================================== */
+
+main {
+  min-height: calc(100vh - var(--header-height) - 6rem);
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-3px);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text);
+}
+
+h1 {
+  background: var(--btn-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.65rem;
+  border-radius: 9999px;
+  background: var(--btn-grad);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--btn-grad);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: filter 0.2s ease, transform 0.2s ease;
+  font-size: 1rem;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--link);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.btn-ghost:hover {
+  color: var(--link-hover);
+  border-color: var(--link);
+}
+
+.site-footer {
+  margin-top: 2rem;
+  padding: 1rem 0;
+  background-color: var(--footer-bg);
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+}
+
+/* Страница-заглушка фазы 3 */
+.page-stub {
+  max-width: 40rem;
+  margin: 2rem auto;
+}
+
+.page-stub h1 {
+  margin-bottom: 0.5rem;
+}
+
+/* === Управление реестром (/art_manage) ===================================== */
+
+.art-manage-page {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.registry-error {
+  border: 1px solid var(--accent-2);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  background: var(--card-bg);
+}
+
+.registry-table-wrap {
+  overflow-x: auto;
+  margin: 1rem 0 2rem;
+}
+
+.registry-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.registry-table th,
+.registry-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.registry-table th {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mono {
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+/* Флаги complete/file_exists поверх базового .badge */
+.badge-ok {
+  background: var(--link);
+  color: var(--bg);
+}
+
+.badge-warn {
+  background: var(--accent-2);
+  color: #fff;
+}
+
+/* Компактные формы meta внутри таблицы */
+.meta-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: flex-end;
+}
+
+.meta-form .btn,
+.meta-form .btn-ghost {
+  font-size: 0.875rem;
+  padding: 0.35rem 0.9rem;
+}
+
+.meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.meta-field label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.meta-field input,
+.meta-field select {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.875rem;
+}
+
+.meta-field input:focus-visible,
+.meta-field select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}
+
+/* Общие поля форм: стили для FormField фазы 5 */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.form-field label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.form-field input {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+}
+
+.form-field input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}
+
+.form-field-invalid input {
+  border-color: var(--accent-2);
+}
+
+.form-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.form-error-text {
+  color: var(--accent-2);
+  font-size: 0.8rem;
+}
+
+/* Страницы авторизации и аккаунта (фаза 5) */
+.auth-page {
+  max-width: 26rem;
+  margin: 2rem auto;
+}
+
+.account-avatar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.account-avatar img {
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+/* Список записей без файла на диске */
+.missing-list {
+  padding-left: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.add-all-block {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+/* Тост-уведомления (Toast.tsx, фаза 5) */
+.toast-container {
+  position: fixed;
+  top: calc(var(--header-height) + 0.75rem);
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 1000;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 16rem;
+  max-width: 24rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 0.925rem;
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+}
+
+.toast-close:hover {
+  color: var(--text);
+}
+
+.toast-success {
+  border-color: var(--link);
+}
+
+.toast-danger {
+  border-color: var(--accent-2);
+}
+
+.toast-warning {
+  border-color: var(--accent-2);
+}
+
+.toast-info {
+  border-color: var(--link);
+}
+
+/* Код всегда на тёмном фоне в любой теме сайта: фон задаёт активная
+   тёмная таблица hljs, здесь только контекст блока. */
+pre {
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+}

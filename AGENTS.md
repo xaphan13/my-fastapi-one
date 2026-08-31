@@ -17,10 +17,12 @@
 2. **Рабочая** (`example_sql/`, `ex_order_product/`, `db_core/`) — асинхронный слой
    данных на SQLAlchemy 2.0 с миграциями Alembic и двумя доменами: `User`/`Post`
    (one-to-many) и `Order`/`Product` (many-to-many через явную ассоциативную модель).
-3. **Блог** (`md_articles/` + `templates/` + `static/`) — серверный рендеринг Jinja2:
-   статьи из YAML-реестра с Markdown-рендером, вход/регистрация/аккаунт (сессии, bcrypt,
-   аватары), управление реестром, HTML-ошибки 403/404/500. Порт flask-blog-1 (исходник
-   `templates_flaskblog/`, только для чтения) — [`docs/11_md_articles.md`](docs/11_md_articles.md).
+3. **Блог** (`md_articles/` + `frontend/`) — React SPA на JSON API `/api/blog`:
+   статьи из YAML-реестра с серверным Markdown-рендером и клиентской подсветкой
+   highlight.js, вход/регистрация/аккаунт (cookie-сессии, bcrypt, аватары),
+   управление реестром, темы сайта/подсветки. История порта: flask-blog-1 →
+   Jinja2 → React (архивы `tasks/001-*`, `tasks/002-*`; текущая архитектура —
+   [`docs/11_md_articles.md`](docs/11_md_articles.md)).
 
 **Дублирование маршрутов и обработчиков в `api/` намеренное** — сравнивать файлы
 построчно и есть учебная цель. Не «рефакторьте» это в общий код, не выяснив задачу.
@@ -37,7 +39,7 @@
 | Миграции | Alembic (асинхронный env.py) |
 | ASGI-сервер | uvicorn (dev), gunicorn + UvicornWorker (multi-worker) |
 | Сериализация | orjson |
-| Шаблоны блога | Jinja2 (Jinja2Templates), статика — StaticFiles на `/static` |
+| Фронтенд блога | React 18 + TypeScript + Vite + Tailwind CSS v4 (в `frontend/`) |
 | Линтеры | ruff + black (объявлены в зависимостях проекта) |
 
 **В проекте нет тестов** — изменения проверяются запуском приложения и curl.
@@ -55,20 +57,21 @@
 | `router_api` | `api/__init__.py` | `/api/v1` | `dep_examples/` (9 роутов Depends) + 4 стиля `/my_items/{item_id}` |
 | `r_users_sql` | `example_sql/router_users.py` | `/users` | CRUD-слой домена User/Post (2 роута) |
 | `r_order_one` | `ex_order_product/router_order_one.py` | `/orders` | 6 роутов Order: ORM/Core запись, фильтры, сортировка, joinedload |
-| `router_main` | `md_articles/routes_main.py` | `/` | `/`, `/home` (307 → `/art_home`), `/about` |
-| `router_users` | `md_articles/routes_users.py` | `/` | блог: register/login/logout/account |
-| `router_articles` | `md_articles/routes_articles.py` | `/` | блог: `/art_home`, `/art/{author}/{art_id}`, `/art_manage*` |
+| `router_blog_api` | `md_articles/api_blog.py` | `/api/blog` | JSON API блога для React SPA: csrf, current_user, register/login/logout, account (GET/POST), articles, articles/{id}, art_manage + add_all + meta |
 
-Итого 42 route-объекта: 25 старых (21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
-`/docs/oauth2-redirect` — кастомные Swagger/ReDoc регистрирует `utils/docs.py`) +
-16 объектов блога (11 имён: пары GET/POST у `/register`, `/login`, `/account`,
-`/art_home` и пара `/`+`/home` дают по отдельному объекту) + mount `/static`.
+Итого 40 route-объектов: 21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
+`/docs/oauth2-redirect` (кастомные Swagger/ReDoc регистрирует `utils/docs.py`)
++ 12 JSON-роутов блога + mount `/static` (аватары) + mount `/assets`
+(сборка фронтенда) + SPA catch-all `/{full_path:path}` (отдаёт
+`frontend/dist/index.html`, для `/api*` — 404 JSON). Клиентская часть блога —
+React SPA в `frontend/` (Vite + TypeScript + Tailwind v4, сборка не коммитится).
 
 ```
 my-fastapi-one/                 <- корень репозитория; здесь запускается qwen-code
 ├── QWEN.md AGENTS.md README.md  контекст + правила команды (этот комплект)
 ├── tasks/                       задания команды: current/ — живое, NNN-<slug>/ — архив (ведёт оркестратор)
 ├── .qwen/agents/                субагенты: frontend-dev, backend-dev, qa, adversary
+├── frontend/                    React SPA блога: Vite + TS + Tailwind v4 (dist/ не коммитится)
 ├── docs/                        подробная документация по проекту (11 файлов, рус.)
 ├── templates_qwen_agents/       комплект агентного режима из другого проекта — ТОЛЬКО пример, не трогать
 ├── templates_flaskblog/         исходник блога (Flask) — ТОЛЬКО пример, не трогать
@@ -77,7 +80,7 @@ my-fastapi-one/                 <- корень репозитория; здес
 ├── Makefile                     запуск uvicorn, alembic, docker network
 ├── pyproject.toml uv.lock       зависимости (uv) + конфиг ruff/black
 └── fastapi-application/         корень Python-приложения (= BASE_DIR)
-    ├── main.py                  точка входа uvicorn: main_app + main()
+    ├── main.py                  main_app + SPA-слой: mount /assets + catch-all на frontend/dist
     ├── main_gunicorn.py         точка входа gunicorn (переиспользует main_app)
     ├── create_fastapi.py        фабрика create_app() + lifespan + register_md_articles
     ├── base_dir_path.py         DIR_CWD / BASE_DIR (Path)
@@ -88,9 +91,9 @@ my-fastapi-one/                 <- корень репозитория; здес
     ├── api/                     демонстрационная часть: dependencies/ + my_routes_dep/
     ├── example_sql/             домен User/Post: router + crud + models + schemas
     ├── ex_order_product/        домен Order/Product: router + models + schemas
-    ├── md_articles/             блог: роутеры, schema_art, модели BlogUser/BlogPost, web_utils
-    ├── templates/               Jinja2-шаблоны блога (19 файлов) + content_art/ (.md кладёт пользователь)
-    ├── static/                  art_css/ (base.css, scripts.js) + profile_pics/ (аватары)
+    ├── md_articles/             блог: api_blog.py (JSON API), schema_art, модели, web_utils
+    ├── content_art/             .md-статьи блога (кладёт пользователь)
+    ├── static/                  profile_pics/ (аватары)
     ├── alembic/                 асинхронные миграции (3 ревизии)
     ├── utils/docs.py            кастомные Swagger/ReDoc
     └── log/                     вывод логов (путь от BASE_DIR)
@@ -174,12 +177,13 @@ Ruff и black объявлены в зависимостях проекта — 
 Тестов нет, поэтому изменения проверяются запуском самого приложения:
 
 ```bash
-cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # ожидается 42
+cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # ожидается 40
 ../.venv/bin/uvicorn main:main_app --port 8000    # затем curl:
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/docs
 curl -s http://127.0.0.1:8000/api/v1/dep_examples/single-direct-dependency
 curl -s http://127.0.0.1:8000/users/get_all_users
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/art_home
+curl -s http://127.0.0.1:8000/api/blog/articles          # JSON API блога
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/   # SPA (нужен frontend/dist: cd frontend && npm run build)
 ```
 
 Не утверждайте, что изменение проверено, без фактического запуска. Если проверить
@@ -355,8 +359,8 @@ nginx находятся в `.gitignore` — никогда не добавля�
 
 | Агент | Зона (можно редактировать) | Чем проверяет изменения | Особые запреты |
 |---|---|---|---|
-| frontend-dev | `nginx/web/`, а также Jinja2-шаблоны и статика блога: `fastapi-application/templates/` (кроме контента `content_art/` — статьи кладёт пользователь), `fastapi-application/static/` | просмотр страницы; если задание требует — curl через поднятое приложение; скриншот в `tasks/current/screenshots/` | Python-модули `fastapi-application/` — зона backend-dev |
-| backend-dev | Python-модули `fastapi-application/` (включая `alembic/`, env-профили, `md_articles/`) | `uv run ruff check .`; `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` (ожидается 42); curl изменённых эндпоинтов на запущенном приложении | `nginx/web/`, `fastapi-application/templates/`, `fastapi-application/static/`; устаревшие API из раздела «Известные дефекты» — не чинить без отдельного задания; дублирование `api/my_routes_dep/` — намеренное; поведение блога `md_articles/` — порт flask-blog-1, «улучшательства» без отдельного задания запрещены |
+| frontend-dev | `frontend/` (React SPA: источники, Vite-конфиги, сборка), `nginx/web/`; пока жив старый блог — также Jinja2-шаблоны и статика блога `fastapi-application/templates/`, `fastapi-application/static/` (кроме контента `fastapi-application/content_art/` — статьи кладёт пользователь) | `cd frontend && npm run build` без ошибок; просмотр страницы; скриншот в `tasks/current/screenshots/` | Python-модули `fastapi-application/` — зона backend-dev; `frontend/dist` не коммитится |
+| backend-dev | Python-модули `fastapi-application/` (включая `alembic/`, env-профили, `md_articles/` с JSON API `api_blog.py`) | `uv run ruff check .`; `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` (до фазы 7 удаления Jinja — 54, после — 40); curl изменённых эндпоинтов на запущенном приложении | `frontend/`, `nginx/web/`, `fastapi-application/templates/`, `fastapi-application/static/`; устаревшие API из раздела «Известные дефекты» — не чинить без отдельного задания; дублирование `api/my_routes_dep/` — намеренное; поведение блога `md_articles/` — порт flask-blog-1, «улучшательства» без отдельного задания запрещены |
 | qa | `tasks/current/e2e/`, `tasks/current/DEFECTS.md`, `tasks/current/screenshots/` | curl-сценарии из критериев успеха текущего задания; регресс: `/docs`, `/users/get_all_users`, `/orders/get_all_orders`, один из `/api/v1/dep_examples/*`, `/art_home` | любой код продукта |
 | adversary | `tasks/current/ADVERSARIAL_REVIEW.md`, `tasks/current/screenshots/` | curl по запущенному приложению; логи `fastapi-application/log/` | всё, кроме своих файлов |
 | spec-writer | `tasks/current/REQUIREMENTS.md` — только на фазе создания задания, одним `write_file` по шаблону `.qwen/skills/task-spec/TEMPLATE.md` | чек-лист скилла `task-spec` (проверяет оркестратор) | код продукта; всё, кроме REQUIREMENTS.md на фазе создания |

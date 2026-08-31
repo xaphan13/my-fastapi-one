@@ -43,8 +43,10 @@ fileStore/
 pg_db/
 db.sqlite3
 .DS_Store
-dist
 *.db
+
+dist/
+node_modules/
 
 # Flask stuff:
 instance/
