@@ -13,14 +13,19 @@
 │  Транспорт        uvicorn (dev) │ gunicorn + UvicornWorker (prod) │
 │                   опционально за nginx (TLS, reverse proxy)       │
 ├──────────────────────────────────────────────────────────────────┤
+│  Клиент (блог)    React SPA (frontend/, Vite + TS + Tailwind v4)  │
+│                   JSON-запросы к /api/blog, cookie-сессии         │
+├──────────────────────────────────────────────────────────────────┤
 │  Композиция       create_fastapi.create_app() → main.main_app     │
-│                   include_router × 3, lifespan                    │
+│                   include_router × 3 + register_md_articles,      │
+│                   mount /assets, SPA catch-all, lifespan          │
 ├──────────────────────────────────────────────────────────────────┤
 │  Presentation     APIRouter'ы; pydantic-схемы запросов/ответов    │
-│                   валидация входа и сериализация выхода           │
+│                   валидация входа и сериализация выхода;          │
+│                   блог — JSON /api/blog вместо HTML-шаблонов      │
 ├──────────────────────────────────────────────────────────────────┤
 │  Dependency       Depends: сессия БД, извлечение параметров,      │
-│  Injection        проверка токена, фабрики сервисов               │
+│  Injection        проверка токена, require_login_api, фабрики     │
 ├──────────────────────────────────────────────────────────────────┤
 │  Application      example_sql/crud/  ← присутствует               │
 │                   ex_order_product/  ← ОТСУТСТВУЕТ (SQL в роутах) │
@@ -28,6 +33,7 @@
 │  Data Access      AsyncDbManager, AsyncSession, ORM-модели        │
 ├──────────────────────────────────────────────────────────────────┤
 │  Хранилище        PostgreSQL (asyncpg) │ SQLite (aiosqlite)       │
+│                   + файлы: articles.yaml, content_art/, аватары   │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -40,6 +46,8 @@
 `core/config.py` — самый нижний уровень: от него зависит почти всё (`db_core`, `api`, `create_fastapi`, `alembic/env.py`), он же не зависит ни от чего, кроме `base_dir_path`.
 
 `config_log.py` — полностью изолированная подсистема на уровне корня приложения. Не зависит от FastAPI, не интегрирована в его цикл логирования.
+
+`md_articles/` — третий прикладной пакет, зависит от `db_core` (сессии, модели) и `base_dir_path` (пути контента). Подключается из `create_fastapi.py`, а не из `main.py`. Особенность: помимо роутера пакет регистрирует **middleware и mount** — это единственное место приложения с кросс-запросной логикой уровня HTTP. Реестр статей (`articles.yaml`) и контент (`content_art/`) — файловое хранилище вне БД; клиентская часть (`frontend/`) от сервера зависит только контрактом JSON API.
 
 ---
 
@@ -61,10 +69,15 @@ def create_app(custom_docs_url: bool = False) -> FastAPI:
     )
     if custom_docs_url:
         reg_docs_routes(app)
+
+    from md_articles import register_md_articles
+
+    register_md_articles(app)
+
     return app
 ```
 
-Фабрика параметризована одним флагом, переключающим встроенную документацию на кастомную (`utils/docs.py`). Подключение роутеров вынесено **наружу** фабрики — в `main.py`, что делает `create_app()` пригодным для тестов с изолированным набором роутеров.
+Фабрика параметризована одним флагом, переключающим встроенную документацию на кастомную (`utils/docs.py`). В отличие от роутеров доменов, подключение блога вынесено **внутрь** фабрики: `register_md_articles(app)` добавляет middleware сессий, mount `/static`, обработчик валидационных ошибок и `router_blog_api`. Роутеры доменов подключаются **снаружи** — в `main.py`, что делает `create_app()` пригодным для тестов с изолированным набором роутеров.
 
 ### 2. Dependency Injection (основной паттерн проекта)
 
@@ -259,6 +272,31 @@ response_model=UserResp  ← ВНИМАНИЕ: наследует password, см
 ORJSONResponse
 ```
 
+### Чтение статьи: `GET /api/blog/articles/{art_id}` (блог)
+
+```
+Браузер (React SPA, /art/:author/:artId)
+  │  fetch, credentials: 'include'
+  ▼
+SessionMiddleware ── расшифровка cookie → request.session {user_id, csrf_token}
+  ▼
+inject_current_user_middleware ── session["user_id"] → SELECT blog_user
+  │                               → request.state.current_user
+  ▼
+router_blog_api → article_detail(art_id)
+  │   get_art(art_id) ← mtime-кэш реестра articles.yaml
+  │   проверки: запись есть, complete (author/lang/title), файл существует
+  ▼
+render_article() ── markdown(content, extensions=["fenced_code", "tables"])
+  ▼
+{"article": {...ArticleLang, content: "<h1>..."}} ── ORJSONResponse
+  ▼
+React: dangerouslySetInnerHTML + hljs.highlightAll() на клиенте
+```
+
+Контраст с доменами `users`/`orders`: здесь нет `response_model` и ORM-выгрузки —
+источник данных файловый (YAML + Markdown), сериализация через `jsonable_encoder`.
+
 ### Обработка ошибок в потоке
 
 ```
@@ -282,7 +320,7 @@ ORJSONResponse
 
 ## Управление состоянием
 
-Приложение **stateless на уровне процесса**: всё состояние в БД. Разделяемых изменяемых структур в памяти нет. Практическое следствие — горизонтальное масштабирование ограничено только БД.
+Приложение **stateless на уровне процесса**: всё долговременное состояние в БД и файлах. Практическое следствие — горизонтальное масштабирование ограничено только БД и общим томом файлов (`articles.yaml`, `content_art/`, `static/profile_pics/`).
 
 Исключения из stateless-правила, о которых нужно знать:
 
@@ -292,8 +330,10 @@ ORJSONResponse
 | `path_reader` (`cls_deps.py:48`) | Процесс | Экземпляр `PathReaderDependency`, созданный на уровне модуля. Хранит `_request`/`_foobar` в атрибутах. В роуте **не используется** (закомментирован) — вместо него создаётся новый экземпляр на каждый запрос |
 | `ConfigLogger.isSetting` | Процесс | Флаг однократной инициализации логгера |
 | `settings` | Процесс | Иммутабелен по факту использования; перечитывания env в рантайме нет |
+| Cookie-сессия блога | Клиент | `SessionMiddleware` starlette: подписанная cookie (ключ `settings.web.secret_key`, max_age 14 дней). В сессии — `user_id` и `csrf_token`. При `workers > 1` все воркеры подписывают cookie одним ключом — сессии переживают перезапуски |
+| Кэш реестра статей | Процесс | `schema_art.py`: `_registry_cache` + `_last_stat` (mtime+size `articles.yaml`). Перечитывается при изменении файла; при ошибке парсинга сохраняется последняя рабочая версия |
 
-Кэширования в проекте нет: ни `functools.lru_cache`, ни `fastapi_cache`, ни клиента Redis. Redis объявлен в `nginx_pg_admin.yml`, но приложение к нему не подключается.
+Кэширования HTTP-ответов в проекте нет (`functools.lru_cache`, `fastapi_cache`, Redis-клиента нет — Redis объявлен в `nginx_pg_admin.yml`, но приложение к нему не подключается). Единственный кэш — mtime-кэш реестра статей выше.
 
 ---
 
@@ -341,8 +381,9 @@ class Settings(BaseSettings):
 | `api.v1.depends_function_annotated` | `/depends_function_annotated` | `my_routes_dep/__init__.py` |
 | `api.user_post_prefix` | `/users` | `example_sql/router_users.py` |
 | `api.order_product_prefix` | `/orders` | `ex_order_product/router_order_one.py` |
+| — (хардкод) | `/api/blog` | `md_articles/api_blog.py` → `router_blog_api` |
 
-**Важно:** `r_users_sql` и `r_order_one` подключаются напрямую к `main_app` в `main.py`, а не через `router_api`. Их итоговые пути — `/users/...` и `/orders/...`, **без** `/api/v1`. Версионирование покрывает только демонстрационную часть.
+**Важно:** `r_users_sql` и `r_order_one` подключаются напрямую к `main_app` в `main.py`, а не через `router_api`. Их итоговые пути — `/users/...` и `/orders/...`, **без** `/api/v1`. Версионирование покрывает только демонстрационную часть. Префикс блога `/api/blog` захардкожен в `api_blog.py` — единственный роутер, не читающий `settings.api`.
 
 ### Профили окружения
 

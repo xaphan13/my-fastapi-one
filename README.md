@@ -13,10 +13,12 @@
 2. **Рабочая** (`example_sql/`, `ex_order_product/`, `db_core/`) — асинхронный слой данных
    на SQLAlchemy 2.0 (`AsyncSession`, `asyncpg`/`aiosqlite`) с миграциями Alembic и двумя
    предметными областями: `User`/`Post` (one-to-many) и `Order`/`Product` (many-to-many).
-3. **Блог** (`md_articles/` + `templates/` + `static/`) — серверный рендеринг Jinja2:
-   статьи из YAML-реестра с Markdown-рендером, вход/регистрация/аккаунт (сессии, bcrypt,
-   аватары), управление реестром. Порт flask-blog-1 (исходник `templates_flaskblog/`,
-   только для чтения) — детали в [`docs/11_md_articles.md`](docs/11_md_articles.md).
+3. **Блог** (`md_articles/` + `frontend/`) — React SPA на JSON API `/api/blog`:
+   статьи из YAML-реестра с серверным Markdown-рендером и клиентской подсветкой
+   highlight.js, вход/регистрация/аккаунт (cookie-сессии, bcrypt, аватары),
+   управление реестром. История порта: flask-blog-1 → Jinja2 → React
+   (архивы `tasks/001-*`, `tasks/002-*`, `tasks/003-*`) — детали в
+   [`docs/11_md_articles.md`](docs/11_md_articles.md).
 
 > Дублирование маршрутов и обработчиков в `api/` **намеренное** — сравнивать файлы
 > построчно и есть учебная цель. Не «рефакторьте» это в общий код.
@@ -60,9 +62,10 @@ disposition adversary, участники), а в свежую заглушку 
 
 ## Возможности
 
-- 42 route-объекта: 25 старых (21 API-эндпоинт плюс служебные `/docs`, `/redoc`,
-  `/openapi.json`, `/docs/oauth2-redirect` — кастомный Swagger/ReDoc на CDN через
-  `utils/docs.py`) + 16 объектов блога + mount `/static`.
+- 40 route-объектов: 21 API-эндпоинт плюс служебные `/docs`, `/redoc`,
+  `/openapi.json`, `/docs/oauth2-redirect` (кастомный Swagger/ReDoc на CDN через
+  `utils/docs.py`) + 12 JSON-роутов блога `/api/blog` + mount `/static` (аватары),
+  mount `/assets` (сборка фронтенда) и SPA catch-all `/{full_path:path}`.
 - Демонстрация 9 способов `Depends`: функции, классы с `__call__`, метод-генератор с
   teardown, фабрики зависимостей, вложенные зависимости.
 - Один эндпоинт `/my_items/{item_id}` в четырёх стилях: `Path()/Query()/Header()/Cookie()`
@@ -71,9 +74,10 @@ disposition adversary, участники), а в свежую заглушку 
   через один `APP__DB__URL`, `PRAGMA foreign_keys=ON` для SQLite.
 - Миграции Alembic (3 ревизии: users/posts, orders/products/association,
   blog_user/blog_post) с асинхронным runner'ом.
-- Блог `md_articles/`: Jinja2-шаблоны (19 файлов), сессии (14 дней), bcrypt, CSRF,
-  HTML-страницы ошибок 403/404/500, Markdown-рендер статей, аватары с Pillow-миниатюрой
-  125×125.
+- Блог `md_articles/` + `frontend/`: React SPA (Vite + TypeScript + Tailwind CSS v4)
+  на JSON API `/api/blog`, cookie-сессии (14 дней), bcrypt, CSRF, аватары с
+  Pillow-миниатюрой 125×125, Markdown-рендер статей на сервере, 4 темы сайта и
+  15 тёмных тем подсветки highlight.js — переключение без перезагрузки.
 - Своя подсистема логирования `ConfigLogger` на `logging.config.dictConfig` (файл+stdout).
 - gunicorn + UvicornWorker для multi-worker запуска; nginx с TLS — в Docker-стеке.
 
@@ -89,7 +93,7 @@ disposition adversary, участники), а в свежую заглушку 
 | Миграции | Alembic (асинхронный env.py) |
 | ASGI-сервер | uvicorn (dev), gunicorn + UvicornWorker (multi-worker) |
 | Сериализация | orjson |
-| Шаблоны блога | Jinja2 (Jinja2Templates), статика — StaticFiles на `/static` |
+| Фронтенд блога | React 18 + TypeScript + Vite 6 + Tailwind CSS v4 + React Router 6 (в `frontend/`) |
 | Линтеры | ruff + black (объявлены в зависимостях) |
 
 ## Быстрый старт (локально)
@@ -118,6 +122,17 @@ cd fastapi-application
 > проекта, а не в `fastapi-application/`. Логи при этом всегда пишутся в
 > `fastapi-application/log/` (путь привязан к `BASE_DIR`). Предпочтителен запуск из
 > `fastapi-application/`. Swagger: <http://127.0.0.1:8000/docs>.
+
+Фронтенд блога собирается отдельно — сборка `frontend/dist` **не коммитится**:
+
+```bash
+cd frontend && npm install && npm run build   # → frontend/dist
+```
+
+Без сборки JSON API (`/api/blog/*`) и Swagger работают, а SPA-страницы (`/`,
+`/art/...`) отвечают 404 JSON с подсказкой выполнить `npm run build`. Dev-режим
+фронтенда — два процесса: `cd frontend && npm run dev` (порт 5173, Vite проксирует
+`/api` и `/static` на `:8000`), бэкенд — как выше.
 
 Для PostgreSQL поднимите dev-стек из `docker-compose.yml` (pg на `5432`, adminer на
 `8080`, pgadmin на `5050`; креды `user/password`, база `shop`) и переключите профиль на
@@ -163,7 +178,7 @@ Env-файлы лежат в `fastapi-application/` и **закоммичены*
 
 ## Маршруты
 
-42 route-объекта всего (проверка: `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` → `42`; 25 старых + 16 объектов блога: 11 имён, где пары GET/POST и `/`+`/home` дают по отдельному объекту + 1 mount `/static`).
+40 route-объектов всего (проверка: `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` → `40`; 21 API + 4 служебных + 12 JSON-роутов блога + mount `/static` + mount `/assets` + SPA catch-all).
 
 | Методы | Маршрут | Назначение |
 |---|---|---|
@@ -173,13 +188,14 @@ Env-файлы лежат в `fastapi-application/` и **закоммичены*
 | GET | `/users/get_all_users`, POST `/users/create_user` | домен User/Post (CRUD-слой) |
 | POST | `/orders/add_order`, `/orders/insert_order` | запись Order (ORM- и Core-путь) |
 | GET | `/orders/get_order_filter_by`, `/get_order_where`, `/get_all_orders`, `/get_all_join` | чтение Order (фильтры, сортировка, joinedload) |
-| GET | `/`, `/home` → 307 `/art_home`, `/about` | блог: главная (редирект) и «О сайте» |
-| GET | `/art_home`, `/art/{author}/{art_id}` | блог: список статей, статья (Markdown → HTML) |
-| GET/POST | `/register`, `/login` | блог: регистрация и вход (CSRF, bcrypt) |
-| GET | `/logout` | блог: выход |
-| GET/POST | `/account` | блог: аккаунт, аватар (авторизация + CSRF) |
-| GET | `/art_manage`; POST `/art_manage/add_all`, `/art_manage/meta` | блог: управление реестром статей (авторизация + CSRF) |
-| GET | `/static/*` | статика блога (StaticFiles) |
+| GET | `/api/blog/csrf`, `/api/blog/current_user` | блог: CSRF-токен и текущий пользователь |
+| POST | `/api/blog/register`, `/api/blog/login`, `/api/blog/logout` | блог: регистрация, вход, выход (CSRF, bcrypt) |
+| GET/POST | `/api/blog/account` | блог: аккаунт и аватар (multipart, CSRF полем формы) |
+| GET | `/api/blog/articles`, `/api/blog/articles/{art_id}` | блог: список статей и статья (Markdown → HTML на сервере) |
+| GET | `/api/blog/art_manage`; POST `.../add_all`, `.../meta` | блог: управление реестром статей (авторизация + CSRF) |
+| GET | `/static/*` | статика аватаров (StaticFiles) |
+| GET | `/assets/*` | сборка фронтенда `frontend/dist/assets` (StaticFiles) |
+| GET | `/{full_path:path}` | SPA catch-all → `frontend/dist/index.html`; `/api*` → 404 JSON |
 
 ## Модель данных
 
@@ -195,7 +211,7 @@ BlogPost(id, title(100), date_posted, content, user_id FK -> blog_user.id)
 `__tablename__` генерируется автоматически из имени класса (`CamelCase` → `snake_case`);
 `OrderProductAssociation` переопределяет его вручную. Миграции: 3 ревизии Alembic в
 `fastapi-application/alembic/versions/`. Реестр статей блога — `md_articles/articles.yaml`
-(контент-статьи `.md` пользователь кладёт в `templates/content_art/`).
+(контент-статьи `.md` пользователь кладёт в `fastapi-application/content_art/`).
 
 ## Запуск в Docker
 
@@ -246,8 +262,8 @@ docker compose -f nginx_pg_admin.yml up -d
 
 ```bash
 uv run ruff check .                                                        # линтер (ruff в зависимостях)
-cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # 42
-cd fastapi-application && ../.venv/bin/uvicorn main:main_app --port 8000    # затем curl /docs, /users/get_all_users, /art_home
+cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"   # 40
+cd fastapi-application && ../.venv/bin/uvicorn main:main_app --port 8000    # затем curl /docs, /users/get_all_users, /api/blog/articles, /
 ```
 
 Тестов нет — изменения проверяются запуском приложения и curl-запросами. Подробные

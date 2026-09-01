@@ -24,11 +24,21 @@ my-fastapi-one/
 │   └── current/REQUIREMENTS.md      # Текущее задание + рабочие артефакты (e2e/, DEFECTS.md, ...)
 │                                   # Закрытые задания архивируются в tasks/NNN-<slug>/ с отчётом
 ├── .qwen/agents/                    # Субагенты: frontend-dev, backend-dev, qa, adversary
+├── frontend/                        # React SPA блога: Vite + TS + Tailwind v4 (dist/ не коммитится)
+│   ├── index.html                   # hljs с CDN (SRI), 15 тёмных тем подсветки, анти-вспышка темы
+│   ├── vite.config.ts               # dev :5173, прокси /api и /static → :8000
+│   └── src/
+│       ├── api/                     # client.ts (fetch + CSRF), blog.ts, auth.ts, artManage.ts
+│       ├── components/              # Layout, Header, ArticleCard, MarkdownContent, Toast, селекторы тем
+│       ├── context/AuthContext.tsx  # текущий пользователь (GET /api/blog/current_user)
+│       ├── hooks/                   # useTheme, useHljsTheme (localStorage)
+│       ├── pages/                   # Home, Article, About, Login, Register, Account, ArtManage
+│       └── types.ts                 # User, Article — типы контракта /api/blog
 ├── templates_qwen_agents/           # Комплект агентного режима из другого проекта — только пример
 ├── fastapi-application/             # Корень Python-приложения (= BASE_DIR)
-│   ├── main.py                      # Точка входа uvicorn; сборка main_app + include_router
+│   ├── main.py                      # Точка входа uvicorn; main_app + include_router + mount /assets + SPA catch-all
 │   ├── main_gunicorn.py             # Точка входа gunicorn; переиспользует main_app
-│   ├── create_fastapi.py            # Фабрика приложения create_app() + lifespan
+│   ├── create_fastapi.py            # Фабрика приложения create_app() + lifespan + register_md_articles
 │   ├── base_dir_path.py             # DIR_CWD / BASE_DIR (Path)
 │   ├── config_log.py                # Автономная подсистема логирования (dictConfig)
 │   ├── alembic.ini                  # Конфиг Alembic; post-write hook = black -l 79
@@ -83,13 +93,24 @@ my-fastapi-one/
 │   │   ├── model_order_product.py   # Order, Product, OrderProductAssociation
 │   │   └── schema_order_product.py  # 20+ pydantic-схем, включая вложенные Resp
 │   │
+│   ├── md_articles/                 # Блог: JSON API /api/blog + реестр статей
+│   │   ├── __init__.py              # register_md_articles(): сессии, current_user, mount /static, роутер
+│   │   ├── api_blog.py              # 12 JSON-эндпоинтов /api/blog + CSRF-хелперы + 422-хендлер
+│   │   ├── schema_art.py            # ArticleLang + YAML-реестр (mtime-кэш, атомарная запись)
+│   │   ├── models.py                # BlogUser / BlogPost (SQLAlchemy 2.0)
+│   │   ├── web_utils.py             # get_current_user, login/logout_user, bcrypt-хелперы
+│   │   └── articles.yaml            # реестр статей (кладёт/правит пользователь через /art_manage)
+│   ├── content_art/                 # .md-статьи блога (кладёт пользователь)
+│   ├── static/profile_pics/         # аватары: default.jpg (125×125) + загруженные
+│   │
 │   ├── utils/docs.py                # reg_docs_routes() — свои Swagger/ReDoc с CDN
 │   │
 │   └── alembic/
 │       ├── env.py                   # Асинхронный runner; url из settings.db.url
 │       └── versions/
 │           ├── ...--59bdab4b2e7c--user_post.py      # users, posts
-│           └── ...--35ae229e79dd--order_product.py  # orders, products, association
+│           ├── ...--35ae229e79dd--order_product.py  # orders, products, association
+│           └── ...--b59cbdf15878--blog.py           # blog_user, blog_post
 │
 ├── nginx/
 │   ├── Docker-nginx                 # nginx:1.20-alpine + копирование conf/web/cert
@@ -115,10 +136,10 @@ my-fastapi-one/
 
 | Файл | Ответственность | Абстракции |
 |---|---|---|
-| `fastapi-application/main.py` | Собирает `main_app`: вызывает `create_app()`, подключает три корневых роутера. Функция `main()` запускает `uvicorn.run("main:main_app", reload=True)`. | `main_app: FastAPI`, `main()` |
+| `fastapi-application/main.py` | Собирает `main_app`: вызывает `create_app()` (тот подключает блог через `register_md_articles`), подключает три корневых роутера, монтирует `/assets` из `frontend/dist/assets` и добавляет **последним** SPA catch-all `/{full_path:path}` (отдаёт `frontend/dist/index.html`; для `/api*` — 404 JSON). Функция `main()` запускает `uvicorn.run("main:main_app", reload=True)`. | `main_app: FastAPI`, `spa_fallback()`, `main()` |
 | `fastapi-application/main_gunicorn.py` | Импортирует **готовый** `main_app` из `main.py` и оборачивает в `MyGunicornApp` с опциями из `get_app_options()`. Дублирования сборки нет. | `main()` |
-| `fastapi-application/create_fastapi.py` | Единственное место создания `FastAPI`. Настраивает `ORJSONResponse` по умолчанию, `lifespan`, переключает встроенные `/docs` на кастомные по флагу. | `create_app()`, `lifespan()` |
-| `fastapi-application/base_dir_path.py` | Два `Path`-константы. `BASE_DIR` = каталог `fastapi-application/`, служит якорем для `.env` и папки логов. | `DIR_CWD`, `BASE_DIR` |
+| `fastapi-application/create_fastapi.py` | Единственное место создания `FastAPI`. Настраивает `ORJSONResponse` по умолчанию, `lifespan`, переключает встроенные `/docs` на кастомные по флагу и вызывает `register_md_articles(app)` — подключение блога. | `create_app()`, `lifespan()` |
+| `fastapi-application/base_dir_path.py` | Два `Path`-константы. `BASE_DIR` = каталог `fastapi-application/`, служит якорем для `.env`, папки логов, контента статей (`content_art/`) и аватаров. | `DIR_CWD`, `BASE_DIR` |
 
 ### Конфигурация
 
@@ -166,6 +187,22 @@ my-fastapi-one/
 | `api/my_routes_dep/pydantic_schema.py` | `Field(...)` как default-значение против `Annotated[T, Field(...)]`. |
 | `api/my_routes_dep/pydantic_validator.py` | Валидация через `Annotated` + `AfterValidator` (`RespAfterValid`, `frozen=True`) против декоратора `@field_validator` (`RespDecorValid`). |
 
+### Блог `md_articles/` и клиентская часть `frontend/`
+
+Подробный разбор — в [11_md_articles.md](11_md_articles.md); здесь — только карта модулей.
+
+| Файл | Ответственность | Абстракции |
+|---|---|---|
+| `md_articles/__init__.py` | `register_md_articles(app)`: middleware `inject_current_user_middleware`, `SessionMiddleware` (cookie 14 дней), mount `/static` (аватары), глобальный хендлер `RequestValidationError` (формат `{errors}` только для `/api/blog`), include `router_blog_api`. | `register_md_articles()` |
+| `md_articles/api_blog.py` | JSON API блога: 12 эндпоинтов под `/api/blog` (csrf, current_user, register/login/logout, account GET/POST, articles, articles/{id}, art_manage + add_all + meta). CSRF: заголовок `X-CSRF-Token` для JSON, поле формы `csrf_token` для multipart. Авторизация — 403 JSON вместо редиректа. | `router_blog_api`, `validate_csrf_header/form`, `require_login_api` |
+| `md_articles/schema_art.py` | Реестр статей: pydantic-модель `ArticleLang`, чтение `articles.yaml` с mtime-кэшем и last-good-state при ошибке парсинга, атомарная запись (tempfile + `os.replace`), скан `content_art/`. Контент — `BASE_DIR / "content_art"`. | `ArticleLang`, `get_articles()`, `save_articles()`, `render_article()` |
+| `md_articles/models.py` | `BlogUser` / `BlogPost` (SQLAlchemy 2.0, реэкспортированы в `db_core/__init__.py` для Alembic). | `BlogUser`, `BlogPost` |
+| `md_articles/web_utils.py` | Сессии и пароли: `get_current_user` (из `session["user_id"]` в `request.state`), `login_user`/`logout_user`, `hash_password`/`verify_password` (bcrypt). | `get_current_user` |
+| `frontend/src/api/client.ts` | Базовый fetch-клиент: `credentials: 'include'`, `getCsrfToken()` → `GET /api/blog/csrf`, `postJson()` с заголовком `X-CSRF-Token`, `postMultipart()` с полем `csrf_token`, класс `ApiError`. | `getJson`, `postJson`, `postMultipart` |
+| `frontend/src/context/AuthContext.tsx` | Текущий пользователь: инициализация `GET /current_user`, обновление после login/account, сброс после logout. | `AuthProvider`, `useAuth` |
+| `frontend/src/hooks/` | Темы без перезагрузки: `useTheme` (4 темы сайта через `data-theme` на `<html>`, `localStorage['theme']`), `useHljsTheme` (swap активной `<link data-hljs-dark>` по `disabled`, `localStorage['hljs-theme']`). | `useTheme`, `useHljsTheme` |
+| `frontend/src/App.tsx` | Маршруты React Router: `/`, `/about`, `/art/:author/:artId`, `/login`, `/register`, `/account`, `/art_manage`; защита `/account` и `/art_manage` через `RequireAuth`. | `RequireAuth` |
+
 ### Вспомогательные подсистемы
 
 | Файл | Ответственность | Абстракции |
@@ -201,7 +238,10 @@ my-fastapi-one/
 
 ### Сторонние API
 
-Внешних HTTP-API проект не вызывает. Единственная внешняя сетевая зависимость — **CDN unpkg.com**, откуда `utils/docs.py` тянет ассеты Swagger UI и ReDoc. Активна только при `create_app(custom_docs_url=True)`; сейчас вызов идёт с `False`, поэтому используются встроенные ассеты FastAPI.
+Внешних HTTP-API проект не вызывает. Внешние сетевые зависимости — только CDN:
+
+- **CDN unpkg.com** — ассеты Swagger UI и ReDoc из `utils/docs.py`. Активна только при `create_app(custom_docs_url=True)`; сейчас вызов идёт с `False`, поэтому используются встроенные ассеты FastAPI.
+- **CDN cdn.jsdelivr.net** — highlight.js 11.12.0 и 16 таблиц стилей подсветки для SPA; подключаются в `frontend/index.html` с SRI-хешами. Загружаются браузером клиента, сервер их не запрашивает.
 
 ### Библиотеки
 
@@ -210,6 +250,8 @@ my-fastapi-one/
 `fastapi>=0.111.0`, `uvicorn[standard]>=0.40.0`, `gunicorn>=23,<24`, `pydantic[email]>=2.7.1,<3`, `pydantic-settings>=2.2.1,<3`, `sqlalchemy[asyncio]>=2.0.30,<3`, `alembic>=1.13.1,<2`, `asyncpg>=0.31.0`, `aiosqlite>=0.22.1`, `orjson>=3.11.5`.
 
 Линтеры `ruff>=0.14.10` и `black>=25.0.0` объявлены в основных `dependencies`, а не в dev-группе. `ruff` настроен на `line-length = 100` и игнорирует `F401`, `E402`, `F541`; `black` — на `line-length = 120`. **Настройки длины строки противоречат друг другу.**
+
+Клиентская часть блога — отдельный npm-проект в `frontend/` (менеджер — npm, лок-файла нет): `react@18.3`, `react-dom@18.3`, `react-router-dom@6.30`; dev-зависимости — `vite@6`, `typescript@5.6`, `tailwindcss@4.1` (плагин `@tailwindcss/vite`), `@vitejs/plugin-react`. Сборка — `npm run build` (`tsc && vite build`) в `frontend/dist`, которая **не коммитится** (строка `dist` в `.gitignore`).
 
 ### Чего в проекте нет
 

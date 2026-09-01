@@ -31,7 +31,7 @@ export default function Header({
     <header className="site-header">
       <div className="container header-inner">
         <Link to="/" className="brand">
-          <span className="brand-accent">md</span>_articles
+          Сайт о программировании
         </Link>
 
         <nav className="nav-links">

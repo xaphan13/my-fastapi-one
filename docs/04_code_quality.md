@@ -42,7 +42,16 @@
 
 **`camel_case_to_snake_case` с doctest.** Единственная функция в проекте с исполняемыми примерами в docstring. Корректно обрабатывает аббревиатуры (`SomeSDK` → `some_sdk`), что нетривиально.
 
-**Фабрика приложения без подключения роутеров.** `create_app()` не знает о роутерах — они подключаются в `main.py`. Это делает фабрику пригодной для тестов с изолированным набором маршрутов, хотя тестов пока нет.
+**Фабрика приложения без подключения роутеров.** `create_app()` не знает о роутерах доменов — они подключаются в `main.py`. Это делает фабрику пригодной для тестов с изолированным набором маршрутов, хотя тестов пока нет.
+
+**Блог (`md_articles/` + `frontend/`) — самая зрелая часть проекта.** Что сделано правильно:
+
+1. Пароли хешируются bcrypt (`web_utils.py`), пароль никогда не возвращается клиенту (`UserOut` без поля `password`) — прямой контраст с доменом `users` (P1-1).
+2. CSRF: двойной токен в сессии, заголовок `X-CSRF-Token` для JSON-запросов и поле формы для multipart; проверка на каждом state-changing эндпоинте.
+3. Реестр статей: mtime-кэш с last-good-state (битый `articles.yaml` не ломает работающий блог) и атомарная запись через tempfile + `os.replace` — нет окна с полусломанным файлом.
+4. Уникальность username/email проверяется явными `SELECT`-запросами до вставки, ошибки возвращаются полем — нет проблемы `IntegrityError` → 500 (P2-6).
+5. Фронтенд: hljs с CDN подключён с SRI-хешами; темы восстанавливаются инлайн-скриптом до загрузки стилей (нет вспышки неверной темы); API-клиент централизован в `client.ts`.
+6. SPA fallback аккуратно обрабатывает отсутствие сборки: 404 JSON с подсказкой `npm run build` вместо 500.
 
 ---
 
@@ -203,9 +212,20 @@ def validate_path_is_even(cls, v: int) -> int:
 
 `RespAfterValid` и `RespDecorValid` валидируют поле `request` (порт клиента) диапазоном 1024–65535. Клиент с исходящим портом ниже 1024 получит 500 на валидации **ответа** — при полностью корректном запросе.
 
-### P2-6. `IntegrityError` не обрабатывается
+### P2-6. `IntegrityError` не обрабатывается в доменах `users`/`orders`
 
-Кастомных обработчиков исключений в проекте нет. Нарушение `UniqueConstraint` (дублирующийся `nickname` в `POST /users/create_user`, дублирующаяся пара в `OrderProductAssociation`) даёт **500** вместо `409`.
+Нарушение `UniqueConstraint` (дублирующийся `nickname` в `POST /users/create_user`, дублирующаяся пара в `OrderProductAssociation`) даёт **500** вместо `409`. В блоге проблемы нет — уникальность проверяется до вставки; здесь дефект остаётся актуальным.
+
+### Дефекты миграции на React (наследие удаления Jinja)
+
+Обнаружены при ревизии кодовой базы после миграции блога на SPA (задание `tasks/003-react-blog-migration/`):
+
+- **Мёртвые Jinja-роутеры.** `md_articles/routes_main.py`, `routes_users.py`, `routes_articles.py` остались в репозитории, хотя ни один из них не импортируется. Более того, они импортируют `flash`/`render_template` из `md_articles.web_utils`, которых там больше нет, — любой их импорт упал бы с `ImportError`. Безвредны в рантайме, но вводят в заблуждение и маскируются глобальным ignore `F401`.
+- **Дубликат компонента.** `frontend/components/Toast.tsx` (вне `src/`) — копия рабочего `frontend/src/components/Toast.tsx`; Vite его не собирает, но файл «живёт» вне зоны сборки и рассинхронизируется.
+- **Сессия БД на каждый запрос.** `inject_current_user_middleware` открывает `AsyncSession` и делает `SELECT blog_user` на **все** HTTP-запросы, включая `/docs`, статику, `/assets` и SPA catch-all, где пользователь не нужен. Для учебного проекта приемлемо, в проде — расход пула впустую.
+- **CSRF-токен не ротируется.** Токен создаётся один раз и живёт в сессии до её истечения; после логина/логаута не обновляется. Стандартная рекомендация — ротация при смене уровня аутентификации.
+- **`remember` в логине игнорируется.** Поле принимается схемой `LoginIn`, но `max_age` сессии фиксирован (14 дней) — галочка «запомнить меня» ни на что не влияет.
+- **Мелочи.** `art_manage_api` вызывает `scan_content_art()` дважды (результат не переиспользуется); `client.ts` запрашивает `GET /api/blog/csrf` перед каждым POST, не кэшируя токен; `_ensure_csrf_token` импортирует `secrets` внутри функции.
 
 ---
 
@@ -216,6 +236,8 @@ def validate_path_is_even(cls, v: int) -> int:
 | Закомментированный код как переключатель | `core/config.py:91-92` | Профиль БД выбирается комментированием строки, а не переменной окружения |
 | Закомментированные альтернативы | `cls_deps.py`, `dep_examp_cls.py`, `config_log.py` | Варианты `Depends(...)`, четыре неиспользуемых форматтера, блок логгеров uvicorn |
 | Мёртвый код | `cls_deps.py:48`, `cls_deps.py:92` | `path_reader` и `access_required` создаются на уровне модуля, но в роутах закомментированы |
+| Мёртвый код | `md_articles/routes_{main,users,articles}.py` | Jinja-роутеры остались после миграции на React: не импортируются и ссылаются на удалённые `flash`/`render_template` |
+| Мёртвый код | `frontend/components/Toast.tsx` | Копия рабочего `src/components/Toast.tsx` вне зоны сборки Vite |
 | Мёртвый код | `utils/docs.py` | `reg_docs_routes` не вызывается: `create_app(custom_docs_url=False)` |
 | Магические значения | `router_order_one.py`, `cls_deps.py` | Индексы `[0]`/`[1]`, токены `"qwerty-abc"`, `"foo-bar-fizz-buzz"` |
 | Диагностический вывод в бизнес-логике | все обработчики | `logF.info(f"{var=}")` — отладочный вывод, а не события домена |
@@ -254,7 +276,7 @@ def validate_path_is_even(cls, v: int) -> int:
 
 ### Критично
 
-**Пароли в открытом виде.** Хеширования нет: `User.password` — `Mapped[str_len_50 | None]`, `crud_users.create_user` сохраняет значение как получено. В сочетании с P1-1 (пароль в ответе API) это полная компрометация учётных данных. Нужен `passlib`/`argon2` или `bcrypt`.
+**Пароли в открытом виде (домен `users`).** Хеширования нет: `User.password` — `Mapped[str_len_50 | None]`, `crud_users.create_user` сохраняет значение как получено. В сочетании с P1-1 (пароль в ответе API) это полная компрометация учётных данных. Нужен `passlib`/`argon2` или `bcrypt`. В блоге сделано правильно — bcrypt в `web_utils.py`, — что подчёркивает непоследовательность домена `users`.
 
 **Секреты в репозитории.** В `.gitignore` строки `#*.env` и `#.env` **закомментированы**, поэтому `one.env` и `two.env` закоммичены. `one.env` содержит `postgresql+asyncpg://user:password@localhost:5432/shop` — строка подключения с парой логин/пароль находится в истории git. Удаление файла не поможет: нужна перезапись истории и ротация пароля.
 
@@ -262,13 +284,13 @@ def validate_path_is_even(cls, v: int) -> int:
 
 ### Существенно
 
-**Аутентификации нет.** Все 21 эндпоинт открыты. `HeaderAccessDependency` защищает единственный демонстрационный роут `/direct-cls-dependency`, `/users/*` и `/orders/*` — нет.
+**Аутентификация есть только в блоге.** Эндпоинты `/api/blog/account*` и `/api/blog/art_manage*` защищены (`require_login_api` → 403 JSON, cookie-сессии + bcrypt + CSRF). Все 21 эндпоинт демо-части и доменов `/users`, `/orders` открыты. `HeaderAccessDependency` защищает единственный демонстрационный роут `/direct-cls-dependency`.
 
 **Сравнение токена уязвимо к timing-атаке.** `cls_deps.py`: `if token != self.secret_token`. Корректно — `secrets.compare_digest`.
 
 **Захардкоженные токены.** `"qwerty-abc"` в декораторе роута `dep_examp_cls.py` и `"foo-bar-fizz-buzz"` в `cls_deps.py:92`.
 
-**CORS, TrustedHost, ProxyHeaders не настроены.** Пользовательских middleware нет вообще. За nginx `request.client` вернёт IP прокси, несмотря на передаваемый `X-Forwarded-For` — а четыре обработчика `/my_items/{item_id}` возвращают `request.client.port` клиенту.
+**CORS, TrustedHost, ProxyHeaders не настроены.** Пользовательских middleware два (сессии блога и `current_user`), но защитных среди них нет. За nginx `request.client` вернёт IP прокси, несмотря на передаваемый `X-Forwarded-For` — а четыре обработчика `/my_items/{item_id}` возвращают `request.client.port` клиенту.
 
 **Rate limiting отсутствует.** Защиты от перебора и флуда нет.
 
@@ -316,8 +338,12 @@ def validate_path_is_even(cls, v: int) -> int:
 | 14 | `ECHO=1` в обоих профилях | `one.env`, `two.env` | P2 |
 | 15 | Логи uvicorn не в файле | `config_log.py` | P2 |
 | 16 | Нет пагинации | `router_users.py`, `router_order_one.py` | P2 |
-| 17 | Timing-атака на сравнение токена | `api/dependencies/cls_deps.py` | P3 |
-| 18 | Нет CORS/TrustedHost/ProxyHeaders | `create_fastapi.py` | P3 |
-| 19 | Нет health-check | `create_fastapi.py` | P3 |
-| 20 | Противоречия `line-length` | `pyproject.toml`, `alembic.ini` | P3 |
+| 17 | Мёртвые Jinja-роутеры после миграции | `md_articles/routes_{main,users,articles}.py` | P2 |
+| 18 | Сессия БД на каждый запрос | `md_articles/__init__.py` (middleware) | P3 |
+| 19 | CSRF-токен не ротируется; `remember` игнорируется | `md_articles/api_blog.py` | P3 |
+| 20 | Дубликат `Toast.tsx` вне `src/` | `frontend/components/Toast.tsx` | P3 |
+| 21 | Timing-атака на сравнение токена | `api/dependencies/cls_deps.py` | P3 |
+| 22 | Нет CORS/TrustedHost/ProxyHeaders | `create_fastapi.py` | P3 |
+| 23 | Нет health-check | `create_fastapi.py` | P3 |
+| 24 | Противоречия `line-length` | `pyproject.toml`, `alembic.ini` | P3 |
 

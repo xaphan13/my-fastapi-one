@@ -149,6 +149,7 @@ a:hover {
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.02em;
+  padding-left: 0.75rem;
 }
 
 .brand:hover {
@@ -166,8 +167,10 @@ a:hover {
 .nav-links {
   display: flex;
   align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 0.25rem 0.5rem;
+  flex: 1;
 }
 
 .nav-link {
@@ -226,12 +229,73 @@ a:hover {
   background: #f7f3ec;
 }
 
-/* === Контент, карточки, футер ============================================== */
+/* === Каркас приложения (app-shell, левое меню) ============================ */
 
-main {
-  min-height: calc(100vh - var(--header-height) - 6rem);
-  padding-top: 1.5rem;
-  padding-bottom: 2rem;
+/* Корневой лейаут: шапка сверху, тело занимает всё свободное место,
+   футер внизу. Ширина — 100% viewport без фиксированных max-width. */
+.app-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Тело: левое меню + контент. Ширина меню адаптивная в 100–150px,
+   контент занимает всю оставшуюся ширину через 1fr (minmax(0,...) чтобы
+   длинный контент мог ужиматься без выпирания). */
+.app-body {
+  display: grid;
+  grid-template-columns: clamp(100px, 12vw, 150px) minmax(0, 1fr);
+  width: 100%;
+}
+
+.app-body > main {
+  min-width: 0;
+  padding: 1.5rem 1.25rem 2rem;
+}
+
+/* Левое меню: вертикальный список, тянется на всю высоту тела. */
+.left-menu {
+  background: var(--card-bg);
+  border-right: 1px solid var(--border);
+  padding: 1rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+/* Пункт меню: на всю ширину боковой колонки, текст по центру,
+   заметный hover (заливка акцентом). font-size в rem — масштабируется
+   браузером вместе с zoom. */
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.5rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease, transform 0.15s ease;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  outline: none;
+  transform: translateX(2px);
+}
+
+.menu-item:active {
+  transform: translateX(2px) scale(0.98);
 }
 
 .card {
@@ -321,8 +385,10 @@ h1 {
 
 /* Страница-заглушка фазы 3 */
 .page-stub {
-  max-width: 40rem;
-  margin: 2rem auto;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 2rem 0;
+  padding: 0 1.5rem;
 }
 
 .page-stub h1 {
@@ -332,8 +398,8 @@ h1 {
 /* === Управление реестром (/art_manage) ===================================== */
 
 .art-manage-page {
-  max-width: 80rem;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0 1rem;
 }
 

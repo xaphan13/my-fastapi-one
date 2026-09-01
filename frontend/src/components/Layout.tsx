@@ -37,9 +37,23 @@ export default function Layout() {
         onHljsThemeChange={setHljsTheme}
         onLogout={handleLogout}
       />
-      <main className="container">
-        <Outlet />
-      </main>
+      <div className="app-body">
+        <aside className="left-menu" aria-label="Демонстрационные разделы">
+          <button type="button" className="menu-item">Python</button>
+          <button type="button" className="menu-item">FastAPI</button>
+          <button type="button" className="menu-item">React</button>
+          <button type="button" className="menu-item">TypeScript</button>
+          <button type="button" className="menu-item">SQLAlchemy</button>
+          <button type="button" className="menu-item">Pydantic</button>
+          <button type="button" className="menu-item">Alembic</button>
+          <button type="button" className="menu-item">PostgreSQL</button>
+          <button type="button" className="menu-item">Docker</button>
+          <button type="button" className="menu-item">Vite</button>
+        </aside>
+        <main>
+          <Outlet />
+        </main>
+      </div>
       <footer className="site-footer">
         <div className="container">Сайт статей о программировании</div>
       </footer>
