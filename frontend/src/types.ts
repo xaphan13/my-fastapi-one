@@ -18,7 +18,19 @@ export interface Article {
   art_id: number;
   title: string;
   file_name: string;
+  // Имя раздела (= имя подпапки content_art/); отсутствует или "" для
+  // статей в корне content_art/. Приходит в summary /articles
+  // (бэкенд: _article_summary) и сохраняется в реестре articles.yaml.
+  section?: string;
   content?: string;
   complete?: boolean;
   file_exists?: boolean;
+}
+
+// Раздел блога: подпапка content_art/. Отдаётся /api/blog/sections
+// (бэкенд: SectionOut). Сортируется на бэкенде по name.
+export interface Section {
+  name: string;
+  label: string;
+  count: number;
 }

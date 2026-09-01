@@ -4,23 +4,382 @@ articles:
   art_id: 1787932544
   title: FastAPI_CodeReview.docx
   file_name: FastAPI_CodeReview.docx.md
+  section: ''
 - author: Max
   lang: Python
   art_id: 1787932545
   title: Тестовая статья codex
   file_name: codex-onefast-review.md
+  section: ''
 - author: Max
   lang: Python
   art_id: 1787932546
   title: gemPro-book1-g
   file_name: gemPro-book1-g.md
+  section: ''
 - author: aaa
   lang: AI
   art_id: 1787935183
   title: agent_mode_review
   file_name: agent_mode_review.md
+  section: ''
 - author: aaa
   lang: AI
   art_id: 1787935323
   title: gemini-pro-fastapi-1
   file_name: gemini-pro-fastapi-1.md
+  section: ''
+- author: Max
+  lang: AI
+  art_id: 1788284932
+  title: aion-zcode-1
+  file_name: AI инструменты/aion-zcode-1.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788284933
+  title: anion-gemini
+  file_name: AI инструменты/anion-gemini.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788284934
+  title: anion-gpt-1
+  file_name: AI инструменты/anion-gpt-1.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788284935
+  title: anion-gpt-2
+  file_name: AI инструменты/anion-gpt-2.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788284936
+  title: claude_stream_py
+  file_name: AI инструменты/claude_stream_py.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788284937
+  title: custom-color-vscode
+  file_name: AI инструменты/custom-color-vscode.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788284938
+  title: deepseek-r1-fastapi-1
+  file_name: AI инструменты/deepseek-r1-fastapi-1.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788284939
+  title: first-arena-high5-fastapi-1
+  file_name: AI инструменты/first-arena-high5-fastapi-1.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788284940
+  title: gem-deep-instal-windsurf-1
+  file_name: AI инструменты/gem-deep-instal-windsurf-1.md
+  section: AI инструменты
+- author: NoName
+  lang: Fast API
+  art_id: 1788284941
+  title: gem-deep-windsurf-1
+  file_name: Fast API/gem-deep-windsurf-1.md
+  section: Fast API
+- author: NoName
+  lang: Fast API
+  art_id: 1788284942
+  title: gemPro-book1-g
+  file_name: Fast API/gemPro-book1-g.md
+  section: Fast API
+- author: NoName
+  lang: Fast API
+  art_id: 1788284943
+  title: gemPro-book1-s
+  file_name: Fast API/gemPro-book1-s.md
+  section: Fast API
+- author: NoName
+  lang: Fast API
+  art_id: 1788284944
+  title: gemini-pro-fastapi-1
+  file_name: Fast API/gemini-pro-fastapi-1.md
+  section: Fast API
+- author: NoName
+  lang: Fast API
+  art_id: 1788284945
+  title: gigachat-fastapi-1
+  file_name: Fast API/gigachat-fastapi-1.md
+  section: Fast API
+- author: NoName
+  lang: Fast API
+  art_id: 1788284946
+  title: gpt5-deep-instal-windsurf-1
+  file_name: Fast API/gpt5-deep-instal-windsurf-1.md
+  section: Fast API
+- author: NoName
+  lang: Fast API
+  art_id: 1788284947
+  title: gpt5-deep-instal-windsurf-2
+  file_name: Fast API/gpt5-deep-instal-windsurf-2.md
+  section: Fast API
+- author: NoName
+  lang: Fast API
+  art_id: 1788284948
+  title: grok-eks-fastapi-1
+  file_name: Fast API/grok-eks-fastapi-1.md
+  section: Fast API
+- author: NoName
+  lang: Jinja Templates
+  art_id: 1788284949
+  title: SOCKS5 прокси через asyncssh_
+  file_name: Jinja Templates/SOCKS5 прокси через asyncssh_.md
+  section: Jinja Templates
+- author: NoName
+  lang: Jinja Templates
+  art_id: 1788284950
+  title: SOCKS5 через sshtunnel_ руководство_
+  file_name: Jinja Templates/SOCKS5 через sshtunnel_ руководство_.md
+  section: Jinja Templates
+- author: NoName
+  lang: Jinja Templates
+  art_id: 1788284951
+  title: qwen3-coder-fastapi-1
+  file_name: Jinja Templates/qwen3-coder-fastapi-1.md
+  section: Jinja Templates
+- author: NoName
+  lang: Jinja Templates
+  art_id: 1788284952
+  title: qwen3-deep-instal-windsurf-1
+  file_name: Jinja Templates/qwen3-deep-instal-windsurf-1.md
+  section: Jinja Templates
+- author: NoName
+  lang: Jinja Templates
+  art_id: 1788284953
+  title: sonet-fastapi-1
+  file_name: Jinja Templates/sonet-fastapi-1.md
+  section: Jinja Templates
+- author: NoName
+  lang: Jinja Templates
+  art_id: 1788284954
+  title: sonet-instal-windsurf-1
+  file_name: Jinja Templates/sonet-instal-windsurf-1.md
+  section: Jinja Templates
+- author: NoName
+  lang: Jinja Templates
+  art_id: 1788284955
+  title: sonet-instal-windsurf-2
+  file_name: Jinja Templates/sonet-instal-windsurf-2.md
+  section: Jinja Templates
+- author: NoName
+  lang: Pydantic Python
+  art_id: 1788284956
+  title: sonet-oauth2-simple-pr
+  file_name: Pydantic Python/sonet-oauth2-simple-pr.md
+  section: Pydantic Python
+- author: NoName
+  lang: Pydantic Python
+  art_id: 1788284957
+  title: sonet-oauth2-super-promt
+  file_name: Pydantic Python/sonet-oauth2-super-promt.md
+  section: Pydantic Python
+- author: NoName
+  lang: Pydantic Python
+  art_id: 1788284958
+  title: sonet-oauth2_practice
+  file_name: Pydantic Python/sonet-oauth2_practice.md
+  section: Pydantic Python
+- author: NoName
+  lang: Pydantic Python
+  art_id: 1788284959
+  title: test.md
+  file_name: Pydantic Python/test.md.md
+  section: Pydantic Python
+- author: NoName
+  lang: Pydantic Python
+  art_id: 1788284960
+  title: Альтернативы asyncssh для SOCKS-прокси_
+  file_name: Pydantic Python/Альтернативы asyncssh для SOCKS-прокси_.md
+  section: Pydantic Python
+- author: NoName
+  lang: Pydantic Python
+  art_id: 1788284961
+  title: Параллелизм и многозадачность Python_
+  file_name: Pydantic Python/Параллелизм и многозадачность Python_.md
+  section: Pydantic Python
+- author: NoName
+  lang: Pydantic Python
+  art_id: 1788284962
+  title: Установка и использование WinSurf Python_
+  file_name: Pydantic Python/Установка и использование WinSurf Python_.md
+  section: Pydantic Python
+- author: NoName
+  lang: Python
+  art_id: 1788284963
+  title: 01_project_structure
+  file_name: Python/01_project_structure.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284964
+  title: 02_architecture
+  file_name: Python/02_architecture.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284965
+  title: 03_execution_flow
+  file_name: Python/03_execution_flow.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284966
+  title: 04_code_quality
+  file_name: Python/04_code_quality.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284967
+  title: 05_optimization_roadmap
+  file_name: Python/05_optimization_roadmap.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284968
+  title: 06_frontend_guide
+  file_name: Python/06_frontend_guide.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284969
+  title: 07_frontend_project_report
+  file_name: Python/07_frontend_project_report.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284970
+  title: 08_ai_application_report
+  file_name: Python/08_ai_application_report.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284971
+  title: 09_ai_code_examples
+  file_name: Python/09_ai_code_examples.md
+  section: Python
+- author: NoName
+  lang: Python
+  art_id: 1788284972
+  title: 10_models_and_providers
+  file_name: Python/10_models_and_providers.md
+  section: Python
+- author: NoName
+  lang: Rust
+  art_id: 1788284973
+  title: 05_ai_agent_guide
+  file_name: Rust/05_ai_agent_guide.md
+  section: Rust
+- author: NoName
+  lang: Rust
+  art_id: 1788284974
+  title: 06_frontend_bootstrap_analysis
+  file_name: Rust/06_frontend_bootstrap_analysis.md
+  section: Rust
+- author: NoName
+  lang: Rust
+  art_id: 1788284975
+  title: 06_frontend_report
+  file_name: Rust/06_frontend_report.md
+  section: Rust
+- author: NoName
+  lang: Rust
+  art_id: 1788284976
+  title: 07_authorization_report
+  file_name: Rust/07_authorization_report.md
+  section: Rust
+- author: NoName
+  lang: Rust
+  art_id: 1788284977
+  title: configuration
+  file_name: Rust/configuration.md
+  section: Rust
+- author: NoName
+  lang: Rust
+  art_id: 1788284978
+  title: report_database_sqlalchemy_async_alembic
+  file_name: Rust/report_database_sqlalchemy_async_alembic.md
+  section: Rust
+- author: NoName
+  lang: Rust
+  art_id: 1788284979
+  title: static-site-generation
+  file_name: Rust/static-site-generation.md
+  section: Rust
+- author: NoName
+  lang: Rust
+  art_id: 1788284980
+  title: writing-posts
+  file_name: Rust/writing-posts.md
+  section: Rust
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284981
+  title: 05_tailwind_cdn_vs_production
+  file_name: Sql Alchemy/05_tailwind_cdn_vs_production.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284982
+  title: AGENTS
+  file_name: Sql Alchemy/AGENTS.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284983
+  title: QWEN.ru
+  file_name: Sql Alchemy/QWEN.ru.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284984
+  title: README
+  file_name: Sql Alchemy/README.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284985
+  title: REQUIREMENTS.ru
+  file_name: Sql Alchemy/REQUIREMENTS.ru.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284986
+  title: adversary.ru
+  file_name: Sql Alchemy/adversary.ru.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284987
+  title: backend-dev.ru
+  file_name: Sql Alchemy/backend-dev.ru.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284988
+  title: frontend-dev.ru
+  file_name: Sql Alchemy/frontend-dev.ru.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284989
+  title: orchestrator.ru
+  file_name: Sql Alchemy/orchestrator.ru.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788284990
+  title: qa.ru
+  file_name: Sql Alchemy/qa.ru.md
+  section: Sql Alchemy

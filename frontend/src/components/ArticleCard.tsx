@@ -12,14 +12,12 @@ export default function ArticleCard({ article }: ArticleCardProps) {
   return (
     <Link
       to={`/art/${article.author}/${article.art_id}`}
-      className="card card-hover"
-      style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
+      className="card card-hover card-row"
+      style={{ textDecoration: 'none', color: 'inherit' }}
     >
-      <h3 style={{ marginTop: 0 }}>{article.title}</h3>
-      <p className="text-muted" style={{ marginBottom: '0.75rem' }}>
-        {article.author}
-      </p>
-      <span className="badge">{article.lang}</span>
+      <h3 className="card-title-grad">{article.title}</h3>
+      <p className="text-muted card-author">{article.author}</p>
+      <span className="badge card-lang">{article.lang}</span>
     </Link>
   );
 }

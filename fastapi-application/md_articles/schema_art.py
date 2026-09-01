@@ -6,11 +6,11 @@ import os
 import secrets
 import tempfile
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import yaml
 from markdown import markdown
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from base_dir_path import BASE_DIR
 from config_log import logF
@@ -27,6 +27,21 @@ class ArticleLang(BaseModel):
     title: str
     file_name: str = ""
     content: str = ""
+    section: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _autofill_section(cls, data: object) -> object:
+        """Если section не задан, вычислить его как первую папку file_name.
+
+        Для статей из корня content_art/ остаётся пустая строка.
+        """
+        if not isinstance(data, dict):
+            return data
+        if "section" not in data or data["section"] in (None, ""):
+            file_name = data.get("file_name") or ""
+            data["section"] = get_section(file_name)
+        return data
 
 
 # ------------------------------------------------------------------------
@@ -63,7 +78,7 @@ _registry_cache: list[ArticleLang] = []
 _registry_error: str | None = None
 _last_stat: tuple[int, int] | None = None
 
-_FIELDS_FOR_YAML = {"author", "lang", "art_id", "title", "file_name"}
+_FIELDS_FOR_YAML = {"author", "lang", "art_id", "title", "file_name", "section"}
 
 
 def _load_registry() -> list[ArticleLang]:
@@ -162,15 +177,26 @@ def save_articles(articles: list[ArticleLang]) -> None:
     logF.info(f"articles.yaml saved: {len(articles)} entries")
 
 
+def get_section(file_name: str) -> str:
+    """Вернуть имя раздела (первая компонента пути) или '' для корня.
+
+    Раздел = имя первой папки в пути; для файла из корня content_art/
+    возвращается ''.
+    """
+    parts = PurePosixPath(file_name).parts
+    return parts[0] if len(parts) > 1 else ""
+
+
 def scan_content_art() -> list[str]:
-    """Return sorted list of .md/.markdown file names in content_art."""
+    """Вернуть отсортированный список относительных POSIX-путей .md/.markdown
+    файлов в content_art/. Первый уровень подпапок = раздел статьи.
+    """
     content_dir = get_path_dir()
     if not content_dir.exists():
         return []
 
-    files = [
-        entry.name
-        for entry in content_dir.iterdir()
-        if entry.is_file() and entry.suffix.lower() in {".md", ".markdown"}
-    ]
+    files: list[str] = []
+    for entry in content_dir.rglob("*"):
+        if entry.is_file() and entry.suffix.lower() in {".md", ".markdown"}:
+            files.append(entry.relative_to(content_dir).as_posix())
     return sorted(files)

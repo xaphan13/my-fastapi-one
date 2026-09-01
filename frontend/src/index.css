@@ -298,6 +298,20 @@ a:hover {
   transform: translateX(2px) scale(0.98);
 }
 
+/* Активный пункт меню разделов (NavLink в SectionMenu). Подсветка
+   заметнее, чем hover, но без агрессивного transform — чтобы не
+   конфликтовать с :hover/:active (transform на hover отменяем). */
+.menu-item.active,
+.menu-item.active:hover,
+.menu-item.active:focus-visible {
+  background: var(--btn-grad);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+  transform: none;
+  box-shadow: var(--shadow);
+}
+
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -630,4 +644,174 @@ pre {
   border-radius: 0.5rem;
   padding: 1rem;
   overflow-x: auto;
+}
+
+/* === Пагинация (Pagination.tsx) ============================================
+   Блок выравнивается по центру, кнопки .page-btn используют токены темы:
+   в покое похожи на .menu-item (var(--card-bg)/var(--border)), при hover —
+   лёгкая подсветка акцентом, .active — градиентом как .menu-item.active. */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.pagination-nav,
+.pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pagination-counter {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 0 0.4rem;
+  white-space: nowrap;
+}
+
+.pagination-size-label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-right: 0.25rem;
+}
+
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  padding: 0.4rem 0.85rem;
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease, filter 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled):not(.active),
+.page-btn:focus-visible:not(:disabled):not(.active) {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  outline: none;
+}
+
+.page-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* Активная кнопка (текущая страница / выбранный размер страницы) —
+   градиентом, как .menu-item.active. */
+.page-btn.active,
+.page-btn.active:hover,
+.page-btn.active:focus-visible {
+  background: var(--btn-grad);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+.page-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  filter: none;
+}
+
+/* === Карточка статьи в одну строку (ArticleCard.tsx) ========================
+   Заголовок + автор + бейдж языка — на одной горизонтальной линии.
+   Длинный заголовок ужимается с эллипсисом, бейдж языка не сжимается.
+   Заголовок — анимированный многоцветный градиент: 5 сочных оттенков
+   для тёмных тем (dark/midnight/aurora), насыщенный спектр для светлой
+   темы переопределён в селекторе [data-theme="light"] ниже.
+   Анимация отключается при prefers-reduced-motion для доступности. */
+.card-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.85rem;
+}
+
+.card-title-grad {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(
+    90deg,
+    #ff6b6b 0%,
+    #feca57 25%,
+    #48dbfb 50%,
+    #ff9ff3 75%,
+    #54a0ff 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-position: 0% 50%;
+  animation: card-title-gradient 6s ease-in-out infinite alternate;
+}
+
+.card-author {
+  margin: 0;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.card-lang {
+  flex-shrink: 0;
+}
+
+@keyframes card-title-gradient {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+[data-theme="light"] .card-title-grad {
+  /* На светлом var(--card-bg) (#fffdf8) светлые яркие цвета сливаются —
+     заменяем на насыщенный контрастный спектр. background-size и
+     свойства clip/transparent/color наследуются от основного правила. */
+  background: linear-gradient(
+    90deg,
+    #e74c3c 0%,
+    #d97706 25%,
+    #2563eb 50%,
+    #8b5cf6 75%,
+    #db2777 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-title-grad {
+    animation: none;
+    background-position: 0% 50%;
+  }
 }

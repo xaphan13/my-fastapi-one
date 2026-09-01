@@ -28,6 +28,7 @@ export default function App() {
     <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/section/:name" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/art/:author/:artId" element={<ArticlePage />} />
           <Route path="/login" element={<LoginPage />} />

@@ -14,7 +14,10 @@ import {
 import { ApiError } from '../api/client';
 import { useToast } from '../components/Toast';
 import { ArtEditForm, ArtAddForm } from '../components/ArtManageForms';
+import Pagination from '../components/Pagination';
 import type { ToastCategory } from '../components/Toast';
+
+const REGISTRY_PAGE_SIZE = 10;
 
 // Флаги complete/file_exists в виде бейджей.
 function Flags({ art }: { art: RegistryArticle }) {
@@ -35,6 +38,8 @@ export default function ArtManagePage() {
   const [data, setData] = useState<ArtManageResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(REGISTRY_PAGE_SIZE);
 
   const load = useCallback(async () => {
     try {
@@ -81,6 +86,16 @@ export default function ArtManagePage() {
     );
   }
 
+  // Срез таблицы «Записи реестра» с клампингом: если после reload данных
+  // текущая страница вышла за пределы (например, добавили/удалили
+  // записи), показываем последнюю валидную, чтобы таблица не пустела.
+  const registryPageCount = Math.max(1, Math.ceil(data.articles.length / pageSize));
+  const registrySafePage = Math.min(Math.max(1, page), registryPageCount);
+  const visibleRegistry = data.articles.slice(
+    (registrySafePage - 1) * pageSize,
+    registrySafePage * pageSize,
+  );
+
   return (
     <div className="art-manage-page">
       <h1>Управление реестром</h1>
@@ -105,7 +120,7 @@ export default function ArtManagePage() {
             </tr>
           </thead>
           <tbody>
-            {data.articles.map((art) => (
+            {visibleRegistry.map((art) => (
               <tr key={art.art_id}>
                 <td className="mono">{art.file_name}</td>
                 <td>{art.author}</td>
@@ -122,6 +137,13 @@ export default function ArtManagePage() {
           </tbody>
         </table>
       </div>
+      <Pagination
+        total={data.articles.length}
+        page={registrySafePage}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
 
       <h2>Новые файлы</h2>
       {data.unassigned_files.length > 0 ? (

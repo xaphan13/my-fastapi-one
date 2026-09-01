@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
+import SectionMenu from './SectionMenu';
 import { useTheme } from '../hooks/useTheme';
 import { useHljsTheme } from '../hooks/useHljsTheme';
 import { useAuth } from '../context/AuthContext';
@@ -38,17 +39,8 @@ export default function Layout() {
         onLogout={handleLogout}
       />
       <div className="app-body">
-        <aside className="left-menu" aria-label="Демонстрационные разделы">
-          <button type="button" className="menu-item">Python</button>
-          <button type="button" className="menu-item">FastAPI</button>
-          <button type="button" className="menu-item">React</button>
-          <button type="button" className="menu-item">TypeScript</button>
-          <button type="button" className="menu-item">SQLAlchemy</button>
-          <button type="button" className="menu-item">Pydantic</button>
-          <button type="button" className="menu-item">Alembic</button>
-          <button type="button" className="menu-item">PostgreSQL</button>
-          <button type="button" className="menu-item">Docker</button>
-          <button type="button" className="menu-item">Vite</button>
+        <aside className="left-menu" aria-label="Разделы блога">
+          <SectionMenu />
         </aside>
         <main>
           <Outlet />

@@ -5,8 +5,9 @@
 import io
 import os
 import time
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -22,6 +23,7 @@ from md_articles.schema_art import (
     get_art,
     get_articles,
     get_registry_error,
+    get_section,
     render_article,
     save_articles,
     scan_content_art,
@@ -69,6 +71,12 @@ class MetaIn(BaseModel):
     author: str = ""
     lang: str = ""
     title: str = ""
+
+
+class SectionOut(BaseModel):
+    name: str
+    label: str
+    count: int
 
 
 class MessageOut(BaseModel):
@@ -400,6 +408,24 @@ async def account_post_api(
 
 
 # ==============================================================================
+# +++++++++++++++++++++++++++++ sections API ++++++++++++++++++++++++++++++++++
+# ------------------------------------------------------------------------------
+@router_blog_api.get("/sections", name="blog_api.sections")
+async def sections_list():
+    """Список непустых разделов с количеством полных статей, по имени."""
+    counts: dict[str, int] = {}
+    for art in get_articles():
+        if art.section and _is_complete(art):
+            counts[art.section] = counts.get(art.section, 0) + 1
+
+    sections = [
+        SectionOut(name=name, label=name, count=count)
+        for name, count in sorted(counts.items())
+    ]
+    return {"sections": jsonable_encoder(sections)}
+
+
+# ==============================================================================
 # +++++++++++++++++++++++++++++ articles API +++++++++++++++++++++++++++++++++++
 # ------------------------------------------------------------------------------
 def _article_summary(art: ArticleLang, disk_files: set[str] | None = None) -> dict:
@@ -411,12 +437,13 @@ def _article_summary(art: ArticleLang, disk_files: set[str] | None = None) -> di
 
 
 @router_blog_api.get("/articles", name="blog_api.articles")
-async def articles_list():
+async def articles_list(section: str | None = Query(default=None)):
+    """Список полных статей; при section — только статьи с этим разделом."""
     articles = get_articles()
     result = [
         _article_summary(art)
         for art in articles
-        if _is_complete(art)
+        if _is_complete(art) and (section is None or art.section == section)
     ]
     return {"articles": jsonable_encoder(result)}
 
@@ -489,11 +516,17 @@ async def art_manage_add_all_api(
     existing_ids = {art.art_id for art in articles}
     added = 0
     for file_name in new_files:
-        title = os.path.splitext(file_name)[0]
+        title = Path(file_name).stem
         new_id = _allocate_art_id(existing_ids)
         existing_ids.add(new_id)
         articles.append(
-            ArticleLang(art_id=new_id, file_name=file_name, title=title, author="", lang="")
+            ArticleLang(
+                art_id=new_id,
+                file_name=file_name,
+                title=title,
+                author="NoName",
+                lang=get_section(file_name),
+            )
         )
         added += 1
 
@@ -527,8 +560,11 @@ async def art_manage_meta_api(
     existing_ids = {art.art_id for art in articles}
 
     if file_name in registry_by_file:
+        existing_section = registry_by_file[file_name].section
         articles = [
-            art.model_copy(update={"author": author, "lang": lang, "title": title})
+            art.model_copy(
+                update={"author": author, "lang": lang, "title": title, "section": existing_section}
+            )
             if art.file_name == file_name
             else art
             for art in articles
@@ -540,7 +576,12 @@ async def art_manage_meta_api(
             title = os.path.splitext(file_name)[0]
         articles.append(
             ArticleLang(
-                art_id=new_id, file_name=file_name, title=title, author=author, lang=lang
+                art_id=new_id,
+                file_name=file_name,
+                title=title,
+                author=author,
+                lang=lang,
+                section=get_section(file_name),
             )
         )
         action_word = "Добавлена"
