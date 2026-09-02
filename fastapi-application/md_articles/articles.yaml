@@ -383,3 +383,46 @@ articles:
   title: qa.ru
   file_name: Sql Alchemy/qa.ru.md
   section: Sql Alchemy
+- author: NoName
+  lang: Guide MCP Python
+  art_id: 1788356265
+  title: python_advanced_book
+  file_name: Guide MCP Python/python_advanced_book.md
+  section: Guide MCP Python
+- author: NoName
+  lang: Guide MCP Python
+  art_id: 1788356266
+  title: Интеграция Puppeteer MCP в Qwen Code
+  file_name: Guide MCP Python/Интеграция Puppeteer MCP в Qwen Code.md
+  section: Guide MCP Python
+- author: NoName
+  lang: Guide MCP Python
+  art_id: 1788356267
+  title: Конфигурация MCP-серверов для субагентов Qwen Code
+  file_name: Guide MCP Python/Конфигурация MCP-серверов для субагентов Qwen Code.md
+  section: Guide MCP Python
+- author: NoName
+  lang: Guide MCP Python
+  art_id: 1788356268
+  title: Магия PEP 723_ Автономные Python-скрипты через uv run (1)
+  file_name: Guide MCP Python/Магия PEP 723_ Автономные Python-скрипты через uv run
+    (1).md
+  section: Guide MCP Python
+- author: NoName
+  lang: Guide MCP Python
+  art_id: 1788356269
+  title: Магия PEP 723_ Автономные Python-скрипты через uv run
+  file_name: Guide MCP Python/Магия PEP 723_ Автономные Python-скрипты через uv run.md
+  section: Guide MCP Python
+- author: NoName
+  lang: Guide MCP Python
+  art_id: 1788356270
+  title: Руководство по настройке MCP-серверов в Qwen Code
+  file_name: Guide MCP Python/Руководство по настройке MCP-серверов в Qwen Code.md
+  section: Guide MCP Python
+- author: NoName
+  lang: Guide React FastAPI
+  art_id: 1788356271
+  title: Архитектура FastAPI и React
+  file_name: Guide React FastAPI/Архитектура FastAPI и React.md
+  section: Guide React FastAPI
