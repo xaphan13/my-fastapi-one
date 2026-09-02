@@ -254,7 +254,10 @@ a:hover {
   padding: 1.5rem 1.25rem 2rem;
 }
 
-/* Левое меню: вертикальный список, тянется на всю высоту тела. */
+/* Левое меню: липнет к верху вьюпорта при прокрутке контента статьи.
+   position: sticky фиксирует элемент относительно ближайшего скролл-контейнера;
+   align-self: start обязателен в grid-колонке — иначе элемент растягивается
+   на всю высоту строки, вылезает за вьюпорт и не «прилипает». */
 .left-menu {
   background: var(--card-bg);
   border-right: 1px solid var(--border);
@@ -263,6 +266,11 @@ a:hover {
   flex-direction: column;
   gap: 0.4rem;
   min-width: 0;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 /* Пункт меню: на всю ширину боковой колонки, текст по центру,
@@ -813,5 +821,255 @@ pre {
   .card-title-grad {
     animation: none;
     background-position: 0% 50%;
+  }
+}
+
+/* === Управление реестром: список статей и фильтры ==========================
+   Вынесено из исходной таблицы в кликабельный список. Стили
+   .registry-item/.registry-item.active умышленно повторяют
+   .menu-item/.menu-item.active — пользователь уже знаком с этим
+   визуальным языком по разделам в боковом меню. */
+
+/* Блок фильтров: флекс, перенос строк при нехватке ширины, поиск
+   не ужимается чекбоксами благодаря flex-basis + min-width. */
+.registry-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.registry-search {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  max-width: 28rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  color: var(--text);
+  padding: 0.45rem 0.95rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.registry-search:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Чекбокс-фильтр как метка: подпись рядом с чекбоксом, общий клик
+   по лейблу переключает — стандартное поведение <label>. */
+.registry-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.95rem;
+  user-select: none;
+}
+
+.registry-filter input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.registry-count {
+  margin-left: auto;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Список статей: вертикальный без маркеров, разнесённый. */
+.registry-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Пункт списка: карточка-«плитка». На hover/active/focus — как .menu-item:
+   та же подсветка акцентом, чтобы UX был единым по проекту. */
+.registry-item {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease, transform 0.15s ease;
+}
+
+.registry-item:hover,
+.registry-item:focus-visible {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  outline: none;
+  transform: translateX(2px);
+}
+
+.registry-item:active {
+  transform: translateX(2px) scale(0.99);
+}
+
+/* Активный (выбранный для редактирования) — градиентом, как
+   .menu-item.active, чтобы было видно «этот пункт сейчас открыт». */
+.registry-item.active,
+.registry-item.active:hover,
+.registry-item.active:focus-visible {
+  background: var(--btn-grad);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+  transform: none;
+  box-shadow: var(--shadow);
+}
+
+/* Заголовок статьи в пункте списка: крупно, с эллипсисом на длинных
+   названиях, чтобы плитка была одной строкой. */
+.registry-item-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* В активном пункте автор/язык плохо читаются на белом — оставляем
+   лёгкую прозрачность. В обычном — приглушённый цвет токена. */
+.registry-item-meta {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.registry-item.active .registry-item-meta {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.registry-empty {
+  margin: 1rem 0;
+}
+
+.registry-edit-file {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* === Боковая панель-диалог (SidePanel.tsx) ==================================
+   Затемнение на всю область вьюпорта + панель, выезжающая справа.
+   z-index выше тостов (toast-container имеет 1000) и контента — иначе
+   панель «утонула» бы в скролле основной страницы. Анимация —
+   transform translateX (0 → 0, opacity 0 → 1), выключается через
+   prefers-reduced-motion. */
+
+.side-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1100;
+  display: flex;
+  justify-content: flex-end;
+  animation: side-panel-fade-in 0.2s ease-out;
+}
+
+.side-panel {
+  position: relative;
+  width: min(480px, 92vw);
+  max-width: 100%;
+  background: var(--card-bg);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  animation: side-panel-slide-in 0.25s ease-out;
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.side-panel-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.side-panel-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.side-panel-close:hover,
+.side-panel-close:focus-visible {
+  background: var(--accent-2);
+  color: #fff;
+  border-color: var(--accent-2);
+  outline: none;
+}
+
+.side-panel-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@keyframes side-panel-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes side-panel-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-panel,
+  .side-panel-overlay {
+    animation: none;
   }
 }

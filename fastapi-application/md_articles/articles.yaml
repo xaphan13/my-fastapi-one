@@ -17,7 +17,7 @@ articles:
   title: gemPro-book1-g
   file_name: gemPro-book1-g.md
   section: ''
-- author: aaa
+- author: Alex
   lang: AI
   art_id: 1787935183
   title: agent_mode_review
@@ -382,4 +382,34 @@ articles:
   art_id: 1788284990
   title: qa.ru
   file_name: Sql Alchemy/qa.ru.md
+  section: Sql Alchemy
+- author: NoName
+  lang: Fast API
+  art_id: 1788293587
+  title: FastAPI_CodeReview.docx
+  file_name: Fast API/FastAPI_CodeReview.docx.md
+  section: Fast API
+- author: NoName
+  lang: Fast API
+  art_id: 1788293588
+  title: agent_mode_review
+  file_name: Fast API/agent_mode_review.md
+  section: Fast API
+- author: NoName
+  lang: Jinja Templates
+  art_id: 1788293589
+  title: gemini-pro-fastapi-1
+  file_name: Jinja Templates/gemini-pro-fastapi-1.md
+  section: Jinja Templates
+- author: NoName
+  lang: Pydantic Python
+  art_id: 1788293590
+  title: gemPro-book1-g
+  file_name: Pydantic Python/gemPro-book1-g.md
+  section: Pydantic Python
+- author: NoName
+  lang: Sql Alchemy
+  art_id: 1788293591
+  title: codex-onefast-review
+  file_name: Sql Alchemy/codex-onefast-review.md
   section: Sql Alchemy

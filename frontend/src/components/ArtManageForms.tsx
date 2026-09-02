@@ -25,11 +25,12 @@ function MetaField({
   onChange: (value: string) => void;
 }) {
   const hasError = errors && errors.length > 0;
+  const inputId = `meta-${name}-input`;
   return (
     <div className={`meta-field${hasError ? ' form-field-invalid' : ''}`}>
-      <label htmlFor={`${name}-${value}-label`}>{label}</label>
+      <label htmlFor={inputId}>{label}</label>
       <input
-        id={`${name}-${value}-label`}
+        id={inputId}
         name={name}
         type="text"
         value={value}
@@ -60,8 +61,17 @@ async function submitMeta(
   }
 }
 
-// Форма редактирования одной строки реестра (author, lang, title).
-export function ArtEditForm({ art }: { art: RegistryArticle }) {
+// Форма редактирования одной выбранной записи реестра — используется
+// страницей /art_manage: пользователь выбирает статью в списке,
+// эта форма подтягивает её поля и шлёт POST /api/blog/art_manage/meta.
+// На «Принять» — тост + проброс ошибок 422 по полям.
+export function ArtEditSelectedForm({
+  art,
+  onSaved,
+}: {
+  art: RegistryArticle;
+  onSaved?: () => void;
+}) {
   const { showToast } = useToast();
   const [author, setAuthor] = useState(art.author);
   const [lang, setLang] = useState(art.lang);
@@ -69,50 +79,69 @@ export function ArtEditForm({ art }: { art: RegistryArticle }) {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Меняются пропсы после перезагрузки данных — подтягиваем значения.
+  // Сменили выбранную запись в списке — подтягиваем её значения.
   useEffect(() => {
     setAuthor(art.author);
     setLang(art.lang);
     setTitle(art.title);
+    setErrors({});
   }, [art]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
     setSubmitting(true);
-    await submitMeta(
-      { file_name: art.file_name, author, lang, title },
-      showToast,
-      setErrors,
-    );
-    setSubmitting(false);
+    let ok = true;
+    try {
+      const resp = await updateMeta({
+        file_name: art.file_name,
+        author,
+        lang,
+        title,
+      });
+      showToast(resp.message, resp.category as ToastCategory);
+    } catch (err) {
+      const serverErrors = extractErrors(err);
+      if (Object.keys(serverErrors).length > 0) {
+        setErrors(serverErrors);
+      } else {
+        showToast('Не удалось сохранить запись', 'danger');
+      }
+      ok = false;
+    } finally {
+      setSubmitting(false);
+    }
+    // Колбэк успешного сохранения вызываем только когда запрос прошёл
+    // без ошибок (родитель обычно закрывает панель и перезагружает
+    // контекст). Если были ошибки 422 — оставляем форму открытой.
+    if (ok && onSaved) onSaved();
   };
 
   return (
     <form className="meta-form" onSubmit={handleSubmit} noValidate>
       <MetaField
         label="Автор"
-        name={`author-${art.art_id}`}
+        name={`edit-${art.art_id}-author`}
         value={author}
         errors={errors.author}
         onChange={setAuthor}
       />
       <MetaField
         label="Язык"
-        name={`lang-${art.art_id}`}
+        name={`edit-${art.art_id}-lang`}
         value={lang}
         errors={errors.lang}
         onChange={setLang}
       />
       <MetaField
         label="Заголовок"
-        name={`title-${art.art_id}`}
+        name={`edit-${art.art_id}-title`}
         value={title}
         errors={errors.title}
         onChange={setTitle}
       />
-      <button type="submit" className="btn btn-ghost" disabled={submitting}>
-        {submitting ? 'Сохранение...' : 'Сохранить'}
+      <button type="submit" className="btn" disabled={submitting}>
+        {submitting ? 'Сохранение...' : 'Принять'}
       </button>
     </form>
   );
