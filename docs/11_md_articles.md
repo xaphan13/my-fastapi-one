@@ -1,24 +1,39 @@
 # 11. md_articles — блог: FastAPI JSON API + React SPA
 
 Документ описывает пакет `fastapi-application/md_articles/` (JSON API `/api/blog`)
-и клиентскую часть `frontend/` (React SPA). Блог портирован с Flask (flask-blog-1,
-исходник `templates_flaskblog/`, только для чтения) через промежуточную версию
-на Jinja2 (архивы заданий `tasks/001-md-articles-blog/`, `tasks/002-two-dark-themes/`);
+и клиентскую часть `frontend/` — **отдельное React-приложение** (свой npm-проект
+со своим `package.json`, dev-сервером и сборкой; с бэкендом его связывает только
+контракт JSON API). Блог портирован с Flask (flask-blog-1, исходник
+`templates_flaskblog/`, только для чтения) через промежуточную версию на Jinja2
+(архивы заданий `tasks/001-md-articles-blog/`, `tasks/002-two-dark-themes/`);
 текущая архитектура — результат задания «Миграция блога md_articles на React»
-(React + TypeScript + Vite + Tailwind CSS v4, см. архив следующего задания).
+(`tasks/003-react-blog-migration/`: React 18 + TypeScript + Vite + Tailwind CSS v4)
+с последующими доработками фронтенда: разделы статей (`004-article-sections`),
+дефолты `add_all` (`005-add-all-defaults`), пагинация (`006-article-lists-pagination`),
+карточки в одну строку (`007-card-one-line-gradient`), sticky-меню
+(`008-sticky-left-menu`), переделка «Управления» (`009-artmanage-list-form-filters`),
+боковые панели-модалки (`010-artmanage-side-panels`).
 
 ## Назначение
 
 Одностраничное React-приложение поверх JSON API FastAPI:
 
-- список статей из YAML-реестра `md_articles/articles.yaml`;
+- список статей из YAML-реестра `md_articles/articles.yaml`, разбитый на **разделы**
+  (подпапки `content_art/`): левое меню `SectionMenu`, маршрут `/section/:name`,
+  фильтрация `GET /api/blog/articles?section=...`;
+- клиентская пагинация списков 5/10/20 (главная/разделы и таблица реестра);
 - страницы статей: Markdown рендерится **на сервере** (`fenced_code`, `tables`),
   React получает готовый HTML, highlight.js подсвечивает код на клиенте;
 - вход / регистрация / аккаунт (cookie-сессии starlette + bcrypt, CSRF,
   аватар с ресайзом 125×125);
-- управление реестром статей (`/art_manage`: add_all + мета-формы);
+- управление реестром статей (`/art_manage`): список с фильтрами («без автора»,
+  «без языка», поиск по названию) и поиском, одна форма редактирования и форма
+  добавления — в боковых панелях-модалках (`SidePanel`), `add_all` с дефолтами
+  (`author=NoName`, `lang=<раздел>`);
 - темы сайта (dark/light/midnight/aurora) и 15 тёмных тем подсветки кода —
-  переключение без перезагрузки.
+  переключение без перезагрузки;
+- оформление: карточки статей в одну строку с анимированным градиентным заголовком,
+  sticky левое меню.
 
 Контент-статьи (`.md`-файлы) кладёт пользователь в
 `fastapi-application/content_art/` — команда их не создаёт.
@@ -29,8 +44,8 @@
 fastapi-application/
 ├── md_articles/
 │   ├── __init__.py        # register_md_articles(): SessionMiddleware, current_user-middleware, mount /static, router_blog_api
-│   ├── api_blog.py        # JSON API /api/blog (12 эндпоинтов) + CSRF-хелперы + RequestValidationError-хендлер
-│   ├── schema_art.py      # ArticleLang + YAML-реестр (mtime-кэш, last-good-state, атомарная запись); контент — BASE_DIR/content_art
+│   ├── api_blog.py        # JSON API /api/blog (13 эндпоинтов) + CSRF-хелперы + RequestValidationError-хендлер
+│   ├── schema_art.py      # ArticleLang (+section) + YAML-реестр (mtime-кэш, last-good-state, атомарная запись)
 │   ├── models.py          # BlogUser / BlogPost
 │   ├── web_utils.py       # get_current_user, login_user, logout_user, hash_password, verify_password
 │   └── articles.yaml      # реестр статей
@@ -39,15 +54,18 @@ fastapi-application/
 │   └── profile_pics/      # default.jpg (125×125) + загруженные аватары
 └── main.py                # include router_blog_api, mount /assets, SPA catch-all
 
-frontend/                  # React SPA (не коммитится в dist/)
+frontend/                  # Отдельное React-приложение (свой npm-проект; dist/ не коммитится)
+├── package.json           # react 18.3, react-router-dom 6.30; vite 6, tailwindcss 4.1, typescript 5.6
 ├── index.html             # hljs + 15 тёмных тем (link-swap), анти-вспышка темы
 ├── vite.config.ts         # dev :5173, прокси /api и /static → :8000
 ├── src/
 │   ├── api/               # client.ts (fetch, credentials, CSRF), blog.ts, auth.ts, artManage.ts
-│   ├── components/        # Layout, Header, ArticleCard, MarkdownContent, Toast, селекторы тем
+│   ├── components/        # Layout, Header, SectionMenu, ArticleCard, MarkdownContent,
+│   │                      # Pagination, Toast, SidePanel, ArtManageForms, селекторы тем
 │   ├── context/AuthContext.tsx
 │   ├── hooks/             # useTheme, useHljsTheme (localStorage 'theme' / 'hljs-theme')
-│   ├── pages/             # HomePage, ArticlePage, AboutPage, LoginPage, RegisterPage, AccountPage, ArtManagePage
+│   ├── pages/             # HomePage (+ /section/:name), ArticlePage, AboutPage, LoginPage,
+│   │                      # RegisterPage, AccountPage, ArtManagePage
 │   └── types.ts
 └── dist/                  # npm run build (в .gitignore; FastAPI раздаёт при наличии)
 ```
@@ -65,10 +83,11 @@ frontend/                  # React SPA (не коммитится в dist/)
 | `/api/blog/logout` | POST | — + X-CSRF-Token |
 | `/api/blog/account` | GET | только авторизованный |
 | `/api/blog/account` | POST | авторизованный + CSRF (поле формы `csrf_token`; multipart с аватаром) |
-| `/api/blog/articles` | GET | — (только полные записи) |
+| `/api/blog/articles` | GET | — (только полные записи; query `?section=<имя>` — фильтр по разделу) |
 | `/api/blog/articles/{art_id}` | GET | — (готовый HTML в `article.content`) |
+| `/api/blog/sections` | GET | — (разделы = подпапки `content_art/`: `{name, label, count}`) |
 | `/api/blog/art_manage` | GET | только авторизованный |
-| `/api/blog/art_manage/add_all` | POST | авторизованный + X-CSRF-Token |
+| `/api/blog/art_manage/add_all` | POST | авторизованный + X-CSRF-Token (дефолты: `author=NoName`, `lang=<раздел>`) |
 | `/api/blog/art_manage/meta` | POST | авторизованный + X-CSRF-Token |
 
 Ошибки `/api/*` — JSON (`{"detail": ...}` или `{"errors": {поле: [тексты]}}` для 422).
@@ -83,8 +102,8 @@ frontend/                  # React SPA (не коммитится в dist/)
   пути `/api` и `/api/*` дают 404 JSON; при отсутствии `dist/index.html` — 404 JSON
   с подсказкой `npm run build`.
 
-Всего маршрутов приложения: 40 route-объектов (21 API + `/docs`, `/redoc`,
-`/openapi.json`, `/docs/oauth2-redirect` + 12 JSON-роутов блога + mount `/static`
+Всего маршрутов приложения: 41 route-объект (21 API + `/docs`, `/redoc`,
+`/openapi.json`, `/docs/oauth2-redirect` + 13 JSON-роутов блога + mount `/static`
 + mount `/assets` + catch-all). Быстрая проверка:
 `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"`.
 
@@ -107,6 +126,23 @@ cookie-сессии, JWT не используется. Темы: `data-theme` �
 `localStorage['theme']`; подсветка: swap `<link>` по `disabled`,
 `localStorage['hljs-theme']` (дефолт `vs2015`), код всегда на тёмном фоне.
 
+Клиентские особенности (задания 004–010):
+
+- **Разделы**: `SectionMenu` (NavLink, «Все статьи» + подпапки `content_art/`),
+  маршрут `/section/:name` (тот же `HomePage`), чтение `useParams` и запрос
+  `getArticles(section)`; активный пункт `.menu-item.active`; меню sticky
+  (`position: sticky`, прокрутка внутри при длинном списке).
+- **Пагинация**: компонент `Pagination` (5/10/20, дефолт 10) на главной/разделах
+  и в таблице реестра; сброс страницы при смене раздела/фильтров; чисто клиентская.
+- **Карточки**: одна строка (заголовок + автор + бейдж языка), заголовок —
+  анимированный 5-цветный градиент с вариантом для светлой темы,
+  `prefers-reduced-motion` отключает анимацию.
+- **Управление реестром**: фильтры «без автора» (включая `NoName`) и «без языка»,
+  поиск по названию (без учёта регистра), кликабельный список записей; форма
+  редактирования выбранной записи и форма добавления нового файла — в боковых
+  панелях-модалках `SidePanel` (закрытие по Esc/✕/клику по фону; при 422 форма
+  остаётся открытой с ошибками по полям).
+
 Данные:
 
 - `BlogUser` / `BlogPost` (SQLAlchemy 2.0) реэкспортированы в `db_core/__init__.py`
@@ -117,6 +153,10 @@ cookie-сессии, JWT не используется. Темы: `data-theme` �
   (tempfile + `os.replace`). Контент и реестр резолвятся от `BASE_DIR`.
 
 ## Режимы запуска
+
+React — отдельное приложение: в dev-режиме оно живёт на своём сервере Vite (:5173)
+и общается с FastAPI только через JSON API (прокси в `vite.config.ts`); в проде
+достаточно собранной статики `frontend/dist`, которую раздаёт FastAPI.
 
 Dev (два процесса, vite проксирует `/api` и `/static` на :8000):
 
@@ -133,11 +173,14 @@ cd fastapi-application && ../.venv/bin/uvicorn main:main_app --port 8000
 curl -s http://127.0.0.1:8000/      # 200, SPA index.html
 ```
 
+Грабля: правки `frontend/src/` не видны на :8000 до пересборки `npm run build` —
+после каждой задачи фронтенда обязательна контрольная сборка.
+
 ## Ключевые отличия от Jinja-версии
 
 | Jinja-версия (до миграции) | React-версия |
 |---|---|
-| 16 HTML-роутов блога + Jinja2Templates | 12 JSON-эндпоинтов `/api/blog` + SPA catch-all |
+| 16 HTML-роутов блога + Jinja2Templates | 13 JSON-эндпоинтов `/api/blog` + SPA catch-all |
 | серверные flash-сообщения | toast в React по `message`/`category` из JSON |
 | HTML-ошибки 403/404/500 | JSON-ошибки (FastAPI default + errors-формат для /api/blog) |
 | Bootstrap 5.3.8 | Tailwind CSS v4 + CSS-переменные тем |
@@ -147,5 +190,6 @@ curl -s http://127.0.0.1:8000/      # 200, SPA index.html
 
 Что сохранено 1:1: реестр `articles.yaml`, тексты сообщений и валидации, логика
 `_is_complete`/`_is_valid_email`/проверок уникальности, `add_all` (записи-черновики
-с title из stem, заполнение через meta), ресайз аватара 125×125, ключи
+с title из stem; с задания 005 — дефолты `author=NoName`, `lang=<раздел>`,
+заполнение через meta), ресайз аватара 125×125, ключи
 `localStorage['theme']`/`['hljs-theme']`, список 15 тёмных тем hljs и SRI-ссылки CDN.

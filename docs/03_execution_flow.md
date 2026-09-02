@@ -401,8 +401,9 @@ FastAPI обходит `main_app.routes` в порядке регистраци�
 | POST | `/api/blog/logout` | `logout_api` |
 | GET | `/api/blog/account` | `account_get_api` |
 | POST | `/api/blog/account` | `account_post_api` |
-| GET | `/api/blog/articles` | `articles_list` |
+| GET | `/api/blog/articles` | `articles_list` (query `?section=` — фильтр по разделу) |
 | GET | `/api/blog/articles/{art_id}` | `article_detail` |
+| GET | `/api/blog/sections` | `sections_list` |
 | GET | `/api/blog/art_manage` | `art_manage_api` |
 | POST | `/api/blog/art_manage/add_all` | `art_manage_add_all_api` |
 | POST | `/api/blog/art_manage/meta` | `art_manage_meta_api` |
