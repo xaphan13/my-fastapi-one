@@ -54,7 +54,7 @@ def read_html(name_html: str, name_dir: Path | None = None) -> str:
     if name_dir is None:
         name_dir = get_path_dir()
     path_html = name_dir / name_html
-    logF.info(f"read_html : \n{name_dir} : {name_html}\n{path_html}")
+    logF.info(f"read_html : \n{name_dir}")
 
     with open(path_html, "r", encoding="utf8") as file:
         all_file: str = file.read()

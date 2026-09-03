@@ -27,7 +27,7 @@ class ConfigLogger:
         logging_config: dict = _load_logging_config(log_dir, log_file)
         logging.config.dictConfig(logging_config)
 
-        logging.basicConfig(level=logging.INFO, handlers=[])
+        # logging.basicConfig(level=logging.INFO, handlers=[])
         ConfigLogger.isSetting = True
 
     @staticmethod
