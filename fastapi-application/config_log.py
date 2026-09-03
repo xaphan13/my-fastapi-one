@@ -4,6 +4,8 @@ from pathlib import Path
 import logging.config
 import os
 
+import yaml
+
 
 class ConfigLogger:
     pathDir_default: str = "./log"
@@ -22,7 +24,7 @@ class ConfigLogger:
         """настройка логгера с использованием словаря"""
         ConfigLogger.__create_log_dir(log_dir=log_dir)
 
-        logging_config: dict = create_config_dict(log_dir, log_file)
+        logging_config: dict = _load_logging_config(log_dir, log_file)
         logging.config.dictConfig(logging_config)
 
         logging.basicConfig(level=logging.INFO, handlers=[])
@@ -46,81 +48,15 @@ class ConfigLogger:
         return logging.getLogger(nameBase)
 
 
-def create_config_dict(log_dir: str, log_file: str) -> dict:
+def _load_logging_config(log_dir: str, log_file: str) -> dict:
+    """Загрузка словаря dictConfig из YAML-файла с подстановкой пути к лог-файлу"""
     path_dir: Path = BASE_DIR / log_dir
 
-    logging_config: dict = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "form1": {
-                "format": "/* %(asctime)s - %(module)s.%(funcName)s(%(lineno)d) - [%(threadName)s] - %(thread)d - [%(processName)s] - %(process)d */ -> \n%(levelname)s: %(message)s"
-            },
-            "form2": {
-                "format": "/* %(asctime)s - %(module)s.%(funcName)s(%(lineno)d) - [%(threadName)s] - [%(thread)d] */  \n%(levelname)s: %(message)s"
-            },
-            "form3": {
-                "format": "/* %(asctime)s - %(module)s.%(funcName)s(%(lineno)d) - %(name)s */ -> \n%(levelname)s: %(message)s"
-            },
-            "form4": {
-                "format": "/* %(asctime)s - %(module)s.%(funcName)s(%(lineno)d) - [%(processName)s] - %(process)d */ -> \n%(levelname)s: %(message)s"
-            },
-            "con1": {
-                "format": "%(asctime)s - %(module)s.%(funcName)s(%(lineno)d) - [%(threadName)s] - [%(thread)d] \n > %(levelname)s: %(message)s"
-            },
-            "con2": {
-                "format": "%(asctime)s - %(module)s.%(funcName)s(%(lineno)d) - [%(threadName)s] - [%(thread)d] > %(levelname)s: %(message)s"
-            },
-        },
-        "handlers": {
-            "rotating_file1": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "level": "INFO",
-                "formatter": "form2",
-                "filename": f"{path_dir}/{log_file}",
-                "maxBytes": 1048576,
-                "backupCount": 20,
-            },
-            "console1": {
-                "class": "logging.StreamHandler",
-                "level": "INFO",
-                "formatter": "con2",
-                "stream": "ext://sys.stdout",
-            },
-        },
-        "loggers": {
-            "Stdout": {
-                "handlers": ["console1"],
-                "level": "DEBUG",
-            },
-            "FileStdout": {
-                "handlers": ["rotating_file1", "console1"],
-                "level": "DEBUG",
-            },
-            "OnlyFile": {
-                "handlers": ["rotating_file1"],
-                "level": "DEBUG",
-            },
-            # Перехватываем логи Uvicorn
-            # "uvicorn": {
-            #     "handlers": ["rotating_file1", "console1"],
-            #     "level": "INFO",
-            #     "propagate": False,
-            # },
-            # "uvicorn.error": {
-            #     "handlers": ["rotating_file1", "console1"],
-            #     "level": "INFO",
-            #     "propagate": False,
-            # },
-            # "uvicorn.access": {
-            #     "handlers": ["rotating_file1", "console1"],
-            #     "level": "INFO",
-            #     "propagate": False,
-            # },
-        },
-    }
+    with open(BASE_DIR / "logging_config.yaml", encoding="utf-8") as f:
+        cfg: dict = yaml.safe_load(f)
 
-    return logging_config
+    cfg["handlers"]["rotating_file1"]["filename"] = str(path_dir / log_file)
+    return cfg
 
 
 ConfigLogger.setting_path_logger(log_file="one_fast.log")

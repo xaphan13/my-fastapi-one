@@ -1,7 +1,7 @@
 ---
 name: qa
 description: QA-инженер команды агентов. Доказывает, работает ли продукт: проверяет критерии успеха запуском и curl-сценариями, ведёт DEFECTS.md. Код продукта не исправляет; только qa может закрыть дефект. Способ запуска и проверки проекта задан в AGENTS.md. Использовать ПРОАКТИВНО для проверок и регистрации дефектов.
-model: nordrouter/minimax/minimax-m3
+model: nordrouter/z-ai/glm-5.3-flash
 approvalMode: auto-edit
 tools:
   - read_file
