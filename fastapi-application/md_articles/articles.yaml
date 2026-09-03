@@ -421,12 +421,6 @@ articles:
   file_name: Guide MCP Python/Руководство по настройке MCP-серверов в Qwen Code.md
   section: Guide MCP Python
 - author: NoName
-  lang: Guide React FastAPI
-  art_id: 1788356271
-  title: Архитектура FastAPI и React
-  file_name: Guide React FastAPI/Архитектура FastAPI и React.md
-  section: Guide React FastAPI
-- author: NoName
   lang: Guide my fastApi
   art_id: 1788382026
   title: 01-architecture-overview
@@ -480,3 +474,15 @@ articles:
   title: README
   file_name: Guide my fastApi/README.md
   section: Guide my fastApi
+- author: NoName
+  lang: Guide FastAPI
+  art_id: 1788441274
+  title: Архитектура FastAPI и React
+  file_name: Guide FastAPI/Архитектура FastAPI и React.md
+  section: Guide FastAPI
+- author: NoName
+  lang: Guide FastAPI
+  art_id: 1788441275
+  title: Современное логирование в Python для FastAPI
+  file_name: Guide FastAPI/Современное логирование в Python для FastAPI.md
+  section: Guide FastAPI
