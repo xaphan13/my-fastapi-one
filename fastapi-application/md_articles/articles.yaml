@@ -426,3 +426,57 @@ articles:
   title: Архитектура FastAPI и React
   file_name: Guide React FastAPI/Архитектура FastAPI и React.md
   section: Guide React FastAPI
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382026
+  title: 01-architecture-overview
+  file_name: Guide my fastApi/01-architecture-overview.md
+  section: Guide my fastApi
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382027
+  title: 02-fastapi-backend
+  file_name: Guide my fastApi/02-fastapi-backend.md
+  section: Guide my fastApi
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382028
+  title: 03-database-layer
+  file_name: Guide my fastApi/03-database-layer.md
+  section: Guide my fastApi
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382029
+  title: 04-json-api-contract
+  file_name: Guide my fastApi/04-json-api-contract.md
+  section: Guide my fastApi
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382030
+  title: 05-react-frontend
+  file_name: Guide my fastApi/05-react-frontend.md
+  section: Guide my fastApi
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382031
+  title: 06-integration-deploy
+  file_name: Guide my fastApi/06-integration-deploy.md
+  section: Guide my fastApi
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382032
+  title: 07-alternatives
+  file_name: Guide my fastApi/07-alternatives.md
+  section: Guide my fastApi
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382033
+  title: 08-checklist-new-project
+  file_name: Guide my fastApi/08-checklist-new-project.md
+  section: Guide my fastApi
+- author: NoName
+  lang: Guide my fastApi
+  art_id: 1788382034
+  title: README
+  file_name: Guide my fastApi/README.md
+  section: Guide my fastApi

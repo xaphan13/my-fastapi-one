@@ -30,6 +30,20 @@
       crossorigin="anonymous"
     ></script>
 
+    <!-- Дополнительные языковые пакеты hljs, которых нет в common-бандле:
+       dockerfile (10 + 1 Dockerfile по алиасу в content_art) и http (1).
+       Грузятся после основного скрипта, до использования hljs на клиенте. -->
+    <script
+      src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.12.0/build/languages/dockerfile.min.js"
+      integrity="sha384-/zu1pI8+9j/v/qNlCRRyidiBhGdxfvGwOLXEPBXpKc77eFNUAhccr0WglEQ+x9La"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.12.0/build/languages/http.min.js"
+      integrity="sha384-L0lAPMci4/TxXazgm0dJIgX9udJzIJf78sk4o9v5sYuRVYJSjymFXF13LmyCU3L0"
+      crossorigin="anonymous"
+    ></script>
+
     <!-- 15 тёмных тем подсветки: активна ровно одна (дефолт vs2015), остальные
        disabled. Список имена/подписи — те же, что в старом селекторе блога;
        useHljsTheme переключает активную ссылку по disabled. Светлая тема одна

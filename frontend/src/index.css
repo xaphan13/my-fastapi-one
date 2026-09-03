@@ -1073,3 +1073,158 @@ pre {
     animation: none;
   }
 }
+
+/* === Markdown-контент (статьи блога, .markdown-content) ====================
+   Серверный рендер python-markdown. Здесь — макет/типографика на токенах тем.
+   Цвета блоков кода <pre> задают 15 hljs-тем через link-swap — не трогаем.
+   Зебра таблиц: color-mix(in srgb, var(--text) 5%, transparent) — видна и в
+   тёмных, и в светлой темах без хардкода конкретных оттенков. */
+
+.markdown-content {
+  line-height: 1.7;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  color: var(--text);
+}
+
+.markdown-content > * + * {
+  margin-top: 1rem;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  color: var(--text);
+  line-height: 1.3;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.markdown-content h1 { font-size: 1.85rem; }
+.markdown-content h2 { font-size: 1.55rem; }
+.markdown-content h3 { font-size: 1.3rem; }
+.markdown-content h4 { font-size: 1.15rem; }
+.markdown-content h5 { font-size: 1.05rem; }
+.markdown-content h6 { font-size: 0.95rem; color: var(--text-muted); }
+
+.markdown-content p {
+  margin: 0;
+}
+
+.markdown-content a {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.markdown-content a:hover {
+  color: var(--link-hover);
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0;
+  padding-left: 1.6rem;
+  color: var(--text);
+}
+
+.markdown-content ul { list-style: disc; }
+.markdown-content ol { list-style: decimal; }
+
+.markdown-content li + li {
+  margin-top: 0.35rem;
+}
+
+.markdown-content blockquote {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--border);
+  background: var(--card-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-muted);
+}
+
+.markdown-content blockquote > * + * {
+  margin-top: 0.5rem;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.75rem 0;
+}
+
+.markdown-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  margin: 0.5rem 0;
+}
+
+/* Таблицы: border-collapse: separate + border-spacing: 0 — чтобы
+   скругление внешних углов (border-radius на table) работало корректно;
+   при collapse скруглить можно только маленькими хаками. Рамки ячеек —
+   через border-bottom, последняя строка без нижней рамки (border-bottom:
+   none на tr:last-child td). */
+.markdown-content table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 0.5rem 0;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown-content th {
+  background: var(--card-bg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.markdown-content tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-content tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+/* Встроенный код — только вне <pre>. Темы hljs стилизуют <code> внутри
+   <pre>, поэтому селектор ограничен :not(pre) > code, чтобы не
+   перебивать подсветку. */
+.markdown-content :not(pre) > code {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.9em;
+  color: var(--text);
+}
+
+/* Блок кода: глобальное правило pre уже даёт padding/border-radius/
+   overflow-x. Перебиваем только margin, чтобы не складывался с
+   > * + * сверху, и фиксируем шрифт для дочернего <code>, чтобы
+   hljs-темы не сбрасывали размер при своём background. */
+.markdown-content pre {
+  margin: 0;
+}
+
+.markdown-content pre > code {
+  font-size: 0.9rem;
+}
