@@ -6,6 +6,10 @@
 version: 1
 disable_existing_loggers: False
 
+root:
+  level: WARNING
+  handlers: []
+
 formatters:
   form1:
     format: "/* %(asctime)s - %(module)s.%(funcName)s(%(lineno)d) - [%(threadName)s] - %(thread)d - [%(processName)s] - %(process)d */ -> \n%(levelname)s: %(message)s"
@@ -37,13 +41,13 @@ handlers:
 loggers:
   Stdout:
     handlers: ["console1"]
-    level: DEBUG
+    level: INFO
   FileStdout:
     handlers: ["rotating_file1", "console1"]
-    level: DEBUG
+    level: INFO
   OnlyFile:
     handlers: ["rotating_file1"]
-    level: DEBUG
+    level: INFO
   # Перехватываем логи Uvicorn
   # "uvicorn": {
   #     "handlers": ["rotating_file1", "console1"],

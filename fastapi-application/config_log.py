@@ -1,4 +1,4 @@
-from base_dir_path import DIR_CWD, BASE_DIR
+from base_dir_path import BASE_DIR
 from pathlib import Path
 
 import logging.config
@@ -7,45 +7,36 @@ import os
 import yaml
 
 
-class ConfigLogger:
-    pathDir_default: str = "./log"
-    nameFile_default: str = "example.log"
-    isSetting: bool = False  # для того чтобы settingLogger() вызвать один раз при запуске программы
+# Дефолты пути и имени файла лога — единое место для всего модуля.
+DEFAULT_LOG_DIR: str = "./log"
+DEFAULT_LOG_FILE: str = "one_fast.log"
 
-    @staticmethod
-    def __create_log_dir(log_dir: str):
+
+class ConfigLogger:
+    def __init__(self, log_dir: str, log_file: str) -> None:
+        self._log_dir: str = log_dir
+        self._log_file: str = log_file
+
+        self._create_log_dir()
+        self._settings_logger()
+
+    def _create_log_dir(self):
         """Создание папки для лог-файлов"""
-        path_dir: Path = BASE_DIR / log_dir
+        path_dir: Path = BASE_DIR / self._log_dir
         if not os.path.exists(path_dir):
             os.mkdir(path_dir)
 
-    @staticmethod
-    def __settings_logger(log_dir: str = pathDir_default, log_file: str = nameFile_default):
+    def _settings_logger(self) -> None:
         """настройка логгера с использованием словаря"""
-        ConfigLogger.__create_log_dir(log_dir=log_dir)
-
-        logging_config: dict = _load_logging_config(log_dir, log_file)
+        logging_config: dict = _load_logging_config(self._log_dir, self._log_file)
         logging.config.dictConfig(logging_config)
 
-        # logging.basicConfig(level=logging.INFO, handlers=[])
-        ConfigLogger.isSetting = True
-
-    @staticmethod
-    def setting_path_logger(log_dir: str = pathDir_default, log_file: str = nameFile_default):
-        """настройка имени файла логгера и директории"""
-        ConfigLogger.pathDir_default = log_dir
-        ConfigLogger.nameFile_default = log_file
-        ConfigLogger.__settings_logger(log_dir, log_file)
-
-    @staticmethod
-    def get_logger(nameBase: str):
-        """nameBase берётся из словаря = 'loggers'
+    def get_logger(self, name_base: str):
+        """nameBase берётся из logging_config.yaml - блок loggers
         OnlyFile = логгер будет писать в файл, в консоль не будет
         Stdout = только в консоль; FileStdout = и в консоль и в файл
         """
-        if not ConfigLogger.isSetting:
-            ConfigLogger.__settings_logger()
-        return logging.getLogger(nameBase)
+        return logging.getLogger(name_base)
 
 
 def _load_logging_config(log_dir: str, log_file: str) -> dict:
@@ -59,7 +50,9 @@ def _load_logging_config(log_dir: str, log_file: str) -> dict:
     return cfg
 
 
-ConfigLogger.setting_path_logger(log_file="one_fast.log")
+# Инстанс уровня модуля — побочный эффект настройки логирования на импорте.
+# Имя файла выбрано отличным от дефолта (one_fast.log) — это контракт приложения.
+config_logger: ConfigLogger = ConfigLogger(log_dir=DEFAULT_LOG_DIR, log_file=DEFAULT_LOG_FILE)
 
-logF = ConfigLogger.get_logger("OnlyFile")
-logFC = ConfigLogger.get_logger("FileStdout")
+logF = config_logger.get_logger("OnlyFile")
+logFC = config_logger.get_logger("FileStdout")
