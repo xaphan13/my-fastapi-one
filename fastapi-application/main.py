@@ -1,4 +1,4 @@
-from base_dir_path import DIR_CWD, BASE_DIR
+from base_dir_path import BASE_DIR
 from config_log import logF
 
 import uvicorn
@@ -55,7 +55,7 @@ async def spa_fallback(request):
 
 
 def main():
-    logF.info(f"Base dir path :\n{DIR_CWD=} \n{BASE_DIR=}")
+    logF.info(f"Base dir path :\n{BASE_DIR=}")
 
     uvicorn.run(
         "main:main_app",

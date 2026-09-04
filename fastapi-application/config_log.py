@@ -16,20 +16,28 @@ class ConfigLogger:
     def __init__(self, log_dir: str, log_file: str) -> None:
         self._log_dir: str = log_dir
         self._log_file: str = log_file
+        self.path_dir: Path = BASE_DIR / self._log_dir
 
         self._create_log_dir()
         self._settings_logger()
 
     def _create_log_dir(self):
         """Создание папки для лог-файлов"""
-        path_dir: Path = BASE_DIR / self._log_dir
-        if not os.path.exists(path_dir):
-            os.mkdir(path_dir)
+        if not os.path.exists(self.path_dir):
+            os.mkdir(self.path_dir)
 
     def _settings_logger(self) -> None:
         """настройка логгера с использованием словаря"""
-        logging_config: dict = _load_logging_config(self._log_dir, self._log_file)
+        logging_config: dict = self._load_logging_config()
         logging.config.dictConfig(logging_config)
+
+    def _load_logging_config(self) -> dict:
+        """Загрузка словаря dictConfig из YAML-файла с подстановкой пути к лог-файлу"""
+        with open(BASE_DIR / "logging_config.yaml", encoding="utf-8") as f:
+            cfg: dict = yaml.safe_load(f)
+
+        cfg["handlers"]["rotating_file1"]["filename"] = str(self.path_dir / self._log_file)
+        return cfg
 
     def get_logger(self, name_base: str):
         """nameBase берётся из logging_config.yaml - блок loggers
@@ -37,17 +45,6 @@ class ConfigLogger:
         Stdout = только в консоль; FileStdout = и в консоль и в файл
         """
         return logging.getLogger(name_base)
-
-
-def _load_logging_config(log_dir: str, log_file: str) -> dict:
-    """Загрузка словаря dictConfig из YAML-файла с подстановкой пути к лог-файлу"""
-    path_dir: Path = BASE_DIR / log_dir
-
-    with open(BASE_DIR / "logging_config.yaml", encoding="utf-8") as f:
-        cfg: dict = yaml.safe_load(f)
-
-    cfg["handlers"]["rotating_file1"]["filename"] = str(path_dir / log_file)
-    return cfg
 
 
 # Инстанс уровня модуля — побочный эффект настройки логирования на импорте.
