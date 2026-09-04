@@ -18,7 +18,7 @@
 - Аватары — multipart upload через fetch, ресайз до 125×125 на бэкенде, сохранение в `fastapi-application/static/profile_pics/`.
 - Ошибки под `/api/*` — JSON. Редиректы 307 из старой логики `require_login` для API не используются: вместо них 403 JSON.
 - Удаление Jinja — последняя фаза: уходят `templates/*.html`, Jinja2Templates, HTML-обработчики 403/404/500, старые роуты `main/users/articles`. `templates/content_art/` переносится в `fastapi-application/content_art/`, путь правится в `schema_art.py`.
-- Не трогать: `/api/v1`, `example_sql`, `ex_order_product`, `db_core`, `alembic`, модели `BlogUser`/`BlogPost`, реестр `md_articles/articles.yaml`. Логика блога (валидация, тексты, фильтрация) переносится как есть.
+- Не трогать: `/api/v1`, `ex_user_post`, `ex_order_product`, `db_core`, `alembic`, модели `BlogUser`/`BlogPost`, реестр `md_articles/articles.yaml`. Логика блога (валидация, тексты, фильтрация) переносится как есть.
 - Ветка `react_fastapi` уже создана. Node v24.19.0 + npm 11.17.0.
 - Тестовые фреймворки, SSR и новые тяжёлые зависимости не добавляются.
 
@@ -36,7 +36,7 @@
 ## Вне рамок
 
 - Демонстрационная часть `/api/v1` и `api/`.
-- Домены `example_sql` (`/users`) и `ex_order_product` (`/orders`).
+- Домены `ex_user_post` (`/users`) и `ex_order_product` (`/orders`).
 - `db_core`, Alembic, модели, миграции.
 - Тестовые фреймворки, SSR, JWT, WebSocket.
 - Изменение логики валидации, текстов ошибок, реестра статей, поведения фильтрации.

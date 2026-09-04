@@ -11,7 +11,7 @@ __all__ = (
 
 from db_core.model_base import Base
 
-from example_sql.models.model_user_post import (
+from ex_user_post.models.model_user_post import (
     User,
     Post,
 )

@@ -83,14 +83,14 @@
 
 - Слой API:
   - `fastapi-application/api/*` — DI/параметры запроса;
-  - `fastapi-application/example_sql/router_users.py` — API пользователей;
+  - `../../ex_user_post/router_users.py` — API пользователей;
   - `fastapi-application/ex_order_product/router_order_one.py` — API заказов.
 
 - Слой данных:
   - `fastapi-application/db_core/db_async.py` — engine/session/dependency;
   - `fastapi-application/db_core/model_base.py` — базовый DeclarativeBase;
   - `fastapi-application/db_core/type_for_models.py` — переиспользуемые типы колонок;
-  - `fastapi-application/example_sql/models/*`, `fastapi-application/ex_order_product/*`.
+  - `../../ex_user_post/models/*`, `fastapi-application/ex_order_product/*`.
 
 - Миграции:
   - `fastapi-application/alembic/env.py`

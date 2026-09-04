@@ -12,7 +12,7 @@
 
 ### Какую задачу решает
 
-В 07 паттерн 11 хвалит `example_sql` за функциональный CRUD-слой, но там же сказано: функции тестируемы, только если подменяема сессия. Полноценный шаг дальше — **интерфейс репозитория** через `typing.Protocol`: роут зависит от абстракции, реализация (SQLAlchemy или in-memory fake) подменяется через `Depends`. Это соединяет слой данных с DI-блоком 05.
+В 07 паттерн 11 хвалит `ex_user_post` за функциональный CRUD-слой, но там же сказано: функции тестируемы, только если подменяема сессия. Полноценный шаг дальше — **интерфейс репозитория** через `typing.Protocol`: роут зависит от абстракции, реализация (SQLAlchemy или in-memory fake) подменяется через `Depends`. Это соединяет слой данных с DI-блоком 05.
 
 ### Шаблон кода
 
@@ -21,12 +21,16 @@
 ```python
 # interfaces.py — абстракция, ноль импортов SQLAlchemy
 from typing import Protocol
-from example_sql.schemas.schema_user import UserCreate
+from ex_user_post.schemas.schema_user import UserCreate
+
 
 class UsersRepository(Protocol):
     async def get_all(self) -> Sequence[User]: ...
+
     async def get_by_id(self, user_id: int) -> User | None: ...
+
     async def create(self, data: UserCreate) -> User: ...
+
 
 # sqlalchemy_repo.py — реализация
 class SqlAlchemyUsersRepository:
@@ -40,11 +44,14 @@ class SqlAlchemyUsersRepository:
     async def get_by_id(self, user_id: int) -> User | None:
         return await self.session.get(User, user_id)
 
+
 # зависимость-фабрика
 def get_users_repository(session: CurrentSession) -> UsersRepository:
     return SqlAlchemyUsersRepository(session)
 
+
 UsersRepo = Annotated[UsersRepository, Depends(get_users_repository)]
+
 
 # роут — зависит только от Protocol
 @r_users_sql.get("/get_all_users", response_model=list[UserResp])
@@ -145,7 +152,7 @@ class User(Base):
 И запрос «только живые» — переиспользуемое условие:
 
 ```python
-# example_sql/crud/filters.py
+# ex_user_post/crud/filters.py
 def alive(model: type[Base]) -> ColumnElement[bool]:
     return model.deleted_at.is_(None)
 

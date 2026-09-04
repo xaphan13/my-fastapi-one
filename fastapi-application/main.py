@@ -10,7 +10,7 @@ from core.config import settings
 from create_fastapi import create_app
 
 from api import router_api
-from example_sql.router_users import r_users_sql
+from ex_user_post.router_users import r_users_sql
 from ex_order_product.router_order_one import r_order_one
 
 
