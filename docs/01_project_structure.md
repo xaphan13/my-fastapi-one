@@ -142,7 +142,7 @@ my-fastapi-one/
 |---|---|---|
 | `fastapi-application/main.py` | Собирает `main_app`: вызывает `create_app()` (тот подключает блог через `register_md_articles`), подключает три корневых роутера, монтирует `/assets` из `frontend/dist/assets` и добавляет **последним** SPA catch-all `/{full_path:path}` (отдаёт `frontend/dist/index.html`; для `/api*` — 404 JSON). Функция `main()` запускает `uvicorn.run("main:main_app", reload=True)`. | `main_app: FastAPI`, `spa_fallback()`, `main()` |
 | `fastapi-application/create_fastapi.py` | Единственное место создания `FastAPI`. Настраивает `ORJSONResponse` по умолчанию, `lifespan`, переключает встроенные `/docs` на кастомные по флагу и вызывает `register_md_articles(app)` — подключение блога. | `create_app()`, `lifespan()` |
-| `fastapi-application/base_dir_path.py` | Два `Path`-константы. `BASE_DIR` = каталог `fastapi-application/`, служит якорем для `.env`, папки логов, контента статей (`content_art/`) и аватаров. | `DIR_CWD`, `BASE_DIR` |
+| `fastapi-application/base_dir_path.py` | Два `Path`-константы. `BASE_DIR` = каталог `fastapi-application/`, служит якорем для `.env`, папки логов, контента статей (`content_art/`) и аватаров. | `BASE_DIR` |
 
 ### Конфигурация
 
