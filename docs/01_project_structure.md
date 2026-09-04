@@ -141,7 +141,6 @@ my-fastapi-one/
 | Файл | Ответственность | Абстракции |
 |---|---|---|
 | `fastapi-application/main.py` | Собирает `main_app`: вызывает `create_app()` (тот подключает блог через `register_md_articles`), подключает три корневых роутера, монтирует `/assets` из `frontend/dist/assets` и добавляет **последним** SPA catch-all `/{full_path:path}` (отдаёт `frontend/dist/index.html`; для `/api*` — 404 JSON). Функция `main()` запускает `uvicorn.run("main:main_app", reload=True)`. | `main_app: FastAPI`, `spa_fallback()`, `main()` |
-| `fastapi-application/main_gunicorn.py` | Импортирует **готовый** `main_app` из `main.py` и оборачивает в `MyGunicornApp` с опциями из `get_app_options()`. Дублирования сборки нет. | `main()` |
 | `fastapi-application/create_fastapi.py` | Единственное место создания `FastAPI`. Настраивает `ORJSONResponse` по умолчанию, `lifespan`, переключает встроенные `/docs` на кастомные по флагу и вызывает `register_md_articles(app)` — подключение блога. | `create_app()`, `lifespan()` |
 | `fastapi-application/base_dir_path.py` | Два `Path`-константы. `BASE_DIR` = каталог `fastapi-application/`, служит якорем для `.env`, папки логов, контента статей (`content_art/`) и аватаров. | `DIR_CWD`, `BASE_DIR` |
 
@@ -217,9 +216,6 @@ my-fastapi-one/
 |---|---|---|
 | `fastapi-application/config_log.py` | Автономная подсистема логирования на `logging.config.dictConfig`. Настраивается **на импорте модуля** (`config_log.py:126`), создаёт папку логов, ротация 1 МБ × 20 файлов. Не связана с FastAPI и не перехватывает логи uvicorn (блок закомментирован). | `ConfigLogger`, `create_config_dict()`, `logF`, `logFC` |
 | `fastapi-application/utils/docs.py` | Регистрирует свои `/docs`, `/redoc` и OAuth2-redirect с ассетами Swagger/ReDoc из CDN unpkg. Включается флагом `create_app(custom_docs_url=True)`. | `reg_docs_routes()` |
-| `core/gunicorn/gunicorn_app.py` | Обёртка `gunicorn.app.base.BaseApplication`: позволяет запускать gunicorn программно с готовым ASGI-объектом. Фильтрует неизвестные и `None`-опции. | `MyGunicornApp` |
-| `core/gunicorn/gunicorn_opt.py` | Собирает dict опций: `bind`, `workers`, `timeout`, `worker_class="uvicorn.workers.UvicornWorker"`, `logger_class`. | `get_app_options()` |
-| `core/gunicorn/gunicorn_log.py` | Переопределяет форматтеры access- и error-логов gunicorn форматом из `settings.logging_gunicorn.log_format`. | `GunicornLogger` |
 | `alembic/env.py` | Асинхронный runner миграций. Подставляет `settings.db.url` в `sqlalchemy.url` в рантайме и берёт `target_metadata` из `db_core.Base`. Использует `pool.NullPool`. | `run_migrations_online()`, `run_async_migrations()`, `do_run_migrations()` |
 
 ---
