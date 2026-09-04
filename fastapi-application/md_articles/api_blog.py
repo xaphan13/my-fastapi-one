@@ -106,6 +106,7 @@ def _ensure_csrf_token(request: Request) -> str:
     token = request.session.get("csrf_token")
     if not token:
         import secrets
+
         token = secrets.token_hex(32)
         request.session["csrf_token"] = token
     return token
@@ -152,6 +153,7 @@ async def custom_request_validation_exception_handler(
     """
     if not request.url.path.startswith("/api/blog"):
         from fastapi.exception_handlers import request_validation_exception_handler
+
         return await request_validation_exception_handler(request, exc)
     errors: dict[str, list[str]] = {}
     for err in exc.errors():
@@ -166,6 +168,7 @@ async def custom_request_validation_exception_handler(
 def _is_valid_email(email: str) -> bool:
     try:
         from pydantic import EmailStr
+
         EmailStr._validate(email)  # type: ignore[attr-defined]
         return True
     except Exception:
@@ -173,9 +176,7 @@ def _is_valid_email(email: str) -> bool:
 
 
 async def _username_exists(session: CurrentSession, username: str) -> bool:
-    result = await session.execute(
-        select(BlogUser).where(BlogUser.username == username)
-    )
+    result = await session.execute(select(BlogUser).where(BlogUser.username == username))
     return result.scalar_one_or_none() is not None
 
 
@@ -256,9 +257,7 @@ async def register_api(
     if not username:
         errors.setdefault("username", []).append("This field is required.")
     elif len(username) < 2 or len(username) > 20:
-        errors.setdefault("username", []).append(
-            "Field must be between 2 and 20 characters long."
-        )
+        errors.setdefault("username", []).append("Field must be between 2 and 20 characters long.")
 
     if not email:
         errors.setdefault("email", []).append("This field is required.")
@@ -345,9 +344,7 @@ async def logout_api(request: Request):
 # +++++++++++++++++++++++++++++ account API ++++++++++++++++++++++++++++++++++++
 # ------------------------------------------------------------------------------
 @router_blog_api.get("/account", name="blog_api.account_get")
-async def account_get_api(
-    request: Request, _user=Depends(require_login_api)
-):
+async def account_get_api(request: Request, _user=Depends(require_login_api)):
     return {"user": _user_out(_get_request_user(request)).model_dump()}
 
 
@@ -371,9 +368,7 @@ async def account_post_api(
     if not username:
         errors.setdefault("username", []).append("This field is required.")
     elif len(username) < 2 or len(username) > 20:
-        errors.setdefault("username", []).append(
-            "Field must be between 2 and 20 characters long."
-        )
+        errors.setdefault("username", []).append("Field must be between 2 and 20 characters long.")
 
     if not email:
         errors.setdefault("email", []).append("This field is required.")
@@ -419,8 +414,7 @@ async def sections_list():
             counts[art.section] = counts.get(art.section, 0) + 1
 
     sections = [
-        SectionOut(name=name, label=name, count=count)
-        for name, count in sorted(counts.items())
+        SectionOut(name=name, label=name, count=count) for name, count in sorted(counts.items())
     ]
     return {"sections": jsonable_encoder(sections)}
 
@@ -473,19 +467,14 @@ async def article_detail(art_id: int):
 # ++++++++++++++++++++++++++++ art_manage API ++++++++++++++++++++++++++++++++++
 # ------------------------------------------------------------------------------
 @router_blog_api.get("/art_manage", name="blog_api.art_manage")
-async def art_manage_api(
-    request: Request, _user=Depends(require_login_api)
-):
+async def art_manage_api(request: Request, _user=Depends(require_login_api)):
     articles = get_articles()
     disk_files = set(scan_content_art())
     registered_files = {art.file_name for art in articles}
 
     unassigned_files = [name for name in scan_content_art() if name not in registered_files]
 
-    articles_context = [
-        _article_summary(art, disk_files)
-        for art in articles
-    ]
+    articles_context = [_article_summary(art, disk_files) for art in articles]
 
     missing_entries = [
         data for data, art in zip(articles_context, articles) if art.file_name not in disk_files
@@ -500,9 +489,7 @@ async def art_manage_api(
 
 
 @router_blog_api.post("/art_manage/add_all", name="blog_api.art_manage_add_all")
-async def art_manage_add_all_api(
-    request: Request, _user=Depends(require_login_api)
-):
+async def art_manage_add_all_api(request: Request, _user=Depends(require_login_api)):
     await validate_csrf_header(request)
 
     disk_files = set(scan_content_art())

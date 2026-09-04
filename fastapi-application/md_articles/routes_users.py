@@ -141,6 +141,7 @@ def _build_field_context(
 def _is_valid_email(email: str) -> bool:
     try:
         from pydantic import EmailStr
+
         EmailStr._validate(email)  # type: ignore[attr-defined]
         return True
     except Exception:
@@ -188,9 +189,7 @@ async def register_post(
     if getattr(request.state, "current_user", None) is not None:
         return RedirectResponse("/art_home", status_code=307)
 
-    errors = await _validate_registration(
-        session, username, email, password, confirm_password
-    )
+    errors = await _validate_registration(session, username, email, password, confirm_password)
     if errors:
         return render_template(
             "register.html",
@@ -228,9 +227,7 @@ async def _validate_registration(
     if not username:
         errors.setdefault("username", []).append("This field is required.")
     elif len(username) < 2 or len(username) > 20:
-        errors.setdefault("username", []).append(
-            "Field must be between 2 and 20 characters long."
-        )
+        errors.setdefault("username", []).append("Field must be between 2 and 20 characters long.")
 
     if not email:
         errors.setdefault("email", []).append("This field is required.")
@@ -445,9 +442,7 @@ async def _validate_account(
     if not username:
         errors.setdefault("username", []).append("This field is required.")
     elif len(username) < 2 or len(username) > 20:
-        errors.setdefault("username", []).append(
-            "Field must be between 2 and 20 characters long."
-        )
+        errors.setdefault("username", []).append("Field must be between 2 and 20 characters long.")
 
     if not email:
         errors.setdefault("email", []).append("This field is required.")

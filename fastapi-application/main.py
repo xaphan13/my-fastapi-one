@@ -77,6 +77,4 @@ if __name__ == "__main__":
 # ==============================================================================
 # +++++++++++++ catch-all: строго после всех include_router и mount +++++++++++
 # ------------------------------------------------------------------------------
-main_app.router.routes.append(
-    Route("/{full_path:path}", spa_fallback, methods=["GET"])
-)
+main_app.router.routes.append(Route("/{full_path:path}", spa_fallback, methods=["GET"]))

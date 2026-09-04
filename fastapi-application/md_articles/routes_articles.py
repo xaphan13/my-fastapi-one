@@ -34,9 +34,7 @@ router_articles = APIRouter(
 @router_articles.post("/art_home", name="art_main.art_home")
 async def art_home(request: Request):
     title_list = [
-        art.model_dump(exclude={"content"})
-        for art in get_articles()
-        if _is_complete(art)
+        art.model_dump(exclude={"content"}) for art in get_articles() if _is_complete(art)
     ]
     logF.info(f"new_art : '/art_home' = {title_list}")
 
@@ -78,7 +76,6 @@ async def art_author(request: Request, author: str, art_id: int):
 # ------------------------------------------------------------------------------
 @router_articles.get("/art_manage", name="art_main.art_manage")
 async def art_manage(request: Request, _user=Depends(require_login)):
-
     articles = get_articles()
     disk_files = set(scan_content_art())
     registered_files = {art.file_name for art in articles}
@@ -188,9 +185,7 @@ async def art_manage_meta(
 
     if file_name in registry_by_file:
         old_art = registry_by_file[file_name]
-        updated_art = old_art.model_copy(
-            update={"author": author, "lang": lang, "title": title}
-        )
+        updated_art = old_art.model_copy(update={"author": author, "lang": lang, "title": title})
         articles = [updated_art if art.file_name == file_name else art for art in articles]
         action_word = "Обновлена"
     else:

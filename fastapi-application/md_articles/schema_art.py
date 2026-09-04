@@ -143,8 +143,7 @@ def save_articles(articles: list[ArticleLang]) -> None:
     """Atomically write articles list back to articles.yaml."""
     data = {
         "articles": [
-            art.model_dump(include=_FIELDS_FOR_YAML, exclude_unset=False)
-            for art in articles
+            art.model_dump(include=_FIELDS_FOR_YAML, exclude_unset=False) for art in articles
         ]
     }
 

@@ -52,8 +52,6 @@ def register_md_articles(app: FastAPI) -> None:
 
     from fastapi.exceptions import RequestValidationError
 
-    app.add_exception_handler(
-        RequestValidationError, custom_request_validation_exception_handler
-    )
+    app.add_exception_handler(RequestValidationError, custom_request_validation_exception_handler)
 
     app.include_router(router_blog_api)
