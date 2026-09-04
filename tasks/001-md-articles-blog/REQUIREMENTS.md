@@ -78,7 +78,7 @@ fastapi-application/
    Таблицы `blog_user`, `blog_post`; типы колонок из `db_core/type_for_models.py`.
 2. Реэкспорт обеих моделей в `db_core/__init__.py` (обязателен для Alembic).
 3. Alembic-ревизия `--autogenerate` (третья по счёту), применяется
-   `alembic upgrade heads` на активном SQLite-профиле (`two.env`).
+   `alembic upgrade heads` на активном SQLite-профиле (`dev_sqlite.env`).
 
 ### 3. Web-утилиты (backend-dev, `md_articles/web_utils.py`)
 

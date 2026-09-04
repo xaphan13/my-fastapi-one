@@ -148,9 +148,9 @@ my-fastapi-one/
 
 | Файл | Ответственность | Абстракции |
 |---|---|---|
-| `fastapi-application/core/config.py` | Вся конфигурация как вложенные pydantic-модели. Читает env с префиксом `APP__` и разделителем `__`. Единственное обязательное поле — `db.url`. | `Settings`, `DatabaseConfig`, `RunConfig`, `ApiPrefix`, `ApiV1Prefix`, `GunicornConfig`, `LoggingConfigGunicorn`, `SqliteDsn`, `settings` |
-| `fastapi-application/one.env` | Профиль PostgreSQL: `postgresql+asyncpg://user:password@localhost:5432/shop`. Подключается **раскомментированием строки в коде**. | — |
-| `fastapi-application/two.env` | Профиль SQLite: `sqlite+aiosqlite:///./one_simple.db`, `ECHO=1`. Активен. | — |
+| `fastapi-application/core/config.py` | Вся конфигурация как вложенные pydantic-модели. Читает env с префиксом `APP__` и разделителем `__`. Единственное обязательное поле — `db.url`. | `Settings`, `DatabaseConfig`, `RunConfig`, `ApiPrefix`, `ApiV1Prefix`, `SqliteDsn`, `settings` |
+| `../fastapi-application/prod_db.env` | Профиль PostgreSQL: `postgresql+asyncpg://user:password@localhost:5432/shop`. Подключается **раскомментированием строки в коде**. | — |
+| `../fastapi-application/dev_sqlite.env` | Профиль SQLite: `sqlite+aiosqlite:///./one_simple.db`, `ECHO=1`. Активен. | — |
 
 `SqliteDsn` — кастомный `AnyUrl` с `UrlConstraints(allowed_schemes=["sqlite", "sqlite+aiosqlite"], host_required=False)`. Без `host_required=False` pydantic отверг бы URL вида `sqlite+aiosqlite:///./one_simple.db`.
 
@@ -226,7 +226,7 @@ my-fastapi-one/
 
 | Компонент | Роль | Где сконфигурировано |
 |---|---|---|
-| **СУБД: PostgreSQL или SQLite** | Единственное хранилище состояния. Драйверы: `asyncpg` (PostgreSQL) и `aiosqlite` (SQLite). Переключение — выбором активного `.env` в кортеже `env_file`. | `core/config.py:88-93`, `one.env`, `two.env` |
+| **СУБД: PostgreSQL или SQLite** | Единственное хранилище состояния. Драйверы: `asyncpg` (PostgreSQL) и `aiosqlite` (SQLite). Переключение — выбором активного `.env` в кортеже `env_file`. | `core/config.py:88-93`, `prod_db.env`, `dev_sqlite.env` |
 | **ASGI-сервер: uvicorn или gunicorn** | uvicorn — dev-режим с `reload=True`. gunicorn с `UvicornWorker` — многопроцессный режим. | `main.py`, `main_gunicorn.py`, `core/gunicorn/` |
 
 ### Инфраструктура (docker)

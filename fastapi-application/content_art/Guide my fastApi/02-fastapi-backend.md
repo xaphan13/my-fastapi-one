@@ -110,8 +110,8 @@ main_app.router.routes.append(
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(
-            BASE_DIR / "two.env",    # sqlite   ← активный профиль
-            # BASE_DIR / "one.env",  # postgres ← закомментирован
+            BASE_DIR / "dev_sqlite.env",    # sqlite   ← активный профиль
+            # BASE_DIR / "prod_db.env",  # postgres ← закомментирован
             BASE_DIR / ".env",       # перекрывает оба
         ),
         case_sensitive=False,

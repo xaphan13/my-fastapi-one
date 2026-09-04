@@ -36,7 +36,7 @@ def test_my_items_endpoint():
     resp = client.get("/api/v1/.../my_items/1")
     assert resp.status_code == 200
 
-# Уровень 3: e2e — реальная БД (SQLite two.env) через lifespan
+# Уровень 3: e2e — реальная БД (SQLite dev_sqlite.env) через lifespan
 @pytest.fixture
 async def client():
     async with AsyncClient(transport=ASGITransport(app=main_app),
@@ -153,7 +153,7 @@ def test_query_id_boundaries(query_value, expected_ok):
 
 ### Какую задачу решает
 
-Проект уже показывает два профиля (`one.env` PostgreSQL / `two.env` SQLite) с переключением правкой кода (01). Третий профиль — `test.env` с in-memory SQLite — делает тесты независимыми от файлов и позволяет сравнить все три диалекта на одном коде.
+Проект уже показывает два профиля (`prod_db.env` PostgreSQL / `dev_sqlite.env` SQLite) с переключением правкой кода (01). Третий профиль — `test.env` с in-memory SQLite — делает тесты независимыми от файлов и позволяет сравнить все три диалекта на одном коде.
 
 ### Шаблон кода
 

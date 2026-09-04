@@ -278,7 +278,7 @@ def validate_path_is_even(cls, v: int) -> int:
 
 **Пароли в открытом виде (домен `users`).** Хеширования нет: `User.password` — `Mapped[str_len_50 | None]`, `crud_users.create_user` сохраняет значение как получено. В сочетании с P1-1 (пароль в ответе API) это полная компрометация учётных данных. Нужен `passlib`/`argon2` или `bcrypt`. В блоге сделано правильно — bcrypt в `web_utils.py`, — что подчёркивает непоследовательность домена `users`.
 
-**Секреты в репозитории.** В `.gitignore` строки `#*.env` и `#.env` **закомментированы**, поэтому `one.env` и `two.env` закоммичены. `one.env` содержит `postgresql+asyncpg://user:password@localhost:5432/shop` — строка подключения с парой логин/пароль находится в истории git. Удаление файла не поможет: нужна перезапись истории и ротация пароля.
+**Секреты в репозитории.** В `.gitignore` строки `#*.env` и `#.env` **закомментированы**, поэтому `prod_db.env` и `dev_sqlite.env` закоммичены. `prod_db.env` содержит `postgresql+asyncpg://user:password@localhost:5432/shop` — строка подключения с парой логин/пароль находится в истории git. Удаление файла не поможет: нужна перезапись истории и ротация пароля.
 
 **Пароль БД в логах.** `create_fastapi.lifespan` логирует `settings.db.url` целиком. Для PostgreSQL-профиля пароль попадает в `log/one_fast.log`. Нужен `settings.db.url.host` или маскирование.
 
@@ -335,7 +335,7 @@ def validate_path_is_even(cls, v: int) -> int:
 | 11 | `MultipleResultsFound` в `get_order_filter_by` | `ex_order_product/router_order_one.py` | P2 |
 | 12 | `409` вместо `404` | `ex_order_product/router_order_one.py` | P2 |
 | 13 | Валидация порта клиента ломает ответ | `api/my_routes_dep/pydantic_validator.py` | P2 |
-| 14 | `ECHO=1` в обоих профилях | `one.env`, `two.env` | P2 |
+| 14 | `ECHO=1` в обоих профилях | `prod_db.env`, `dev_sqlite.env` | P2 |
 | 15 | Логи uvicorn не в файле | `config_log.py` | P2 |
 | 16 | Нет пагинации | `router_users.py`, `router_order_one.py` | P2 |
 | 17 | Мёртвые Jinja-роутеры после миграции | `md_articles/routes_{main,users,articles}.py` | P2 |

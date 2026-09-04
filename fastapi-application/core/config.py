@@ -1,7 +1,5 @@
 from base_dir_path import BASE_DIR
 
-from typing import Literal
-
 from pydantic import (
     BaseModel,
     AnyUrl,
@@ -13,29 +11,6 @@ from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
 )
-
-
-class GunicornConfig(BaseModel):
-    host: str = "0.0.0.0"
-    port: int = 8000
-    workers: int = 1
-    timeout: int = 900
-
-
-LOG_DEFAULT_FORMAT = (
-    "[%(asctime)s.%(msecs)03d] %(module)10s:%(lineno)-3d %(levelname)-7s - %(message)s"
-)
-
-
-class LoggingConfigGunicorn(BaseModel):
-    log_level: Literal[
-        "debug",
-        "info",
-        "warning",
-        "error",
-        "critical",
-    ] = "info"
-    log_format: str = LOG_DEFAULT_FORMAT
 
 
 class RunConfig(BaseModel):
@@ -92,17 +67,14 @@ class DatabaseConfig(BaseModel):
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(
-            BASE_DIR / "two.env",  # sqlite
-            # BASE_DIR / "one.env",  # postgres
+            BASE_DIR / "prod_db.env",  # postgres
+            BASE_DIR / "dev_sqlite.env",  # sqlite
             BASE_DIR / ".env",
         ),
         case_sensitive=False,
         env_prefix="APP__",
         env_nested_delimiter="__",
     )
-
-    logging_gunicorn: LoggingConfigGunicorn = LoggingConfigGunicorn()
-    gunicorn: GunicornConfig = GunicornConfig()
 
     run: RunConfig = RunConfig()
     api: ApiPrefix = ApiPrefix()

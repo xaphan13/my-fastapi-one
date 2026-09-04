@@ -25,7 +25,7 @@ def create_app(custom_docs_url: bool = False) -> FastAPI:
     docs_url, redoc_url = (None, None) if custom_docs_url else ("/docs", "/redoc")
 
     app = FastAPI(
-        title="Example Request Parameters Extraction",
+        title="Example : Fast API - SQL - React",
         default_response_class=ORJSONResponse,
         lifespan=lifespan,
         docs_url=docs_url,

@@ -106,7 +106,7 @@ async def add_product_to_order(db: CurrentSession, body: AssociationAddBody):
 
 ### Чему учит
 
-1. Диалект-специфичные конструкции (`sqlalchemy.dialects.postgresql`) vs универсальный Core — важная развилка; для SQLite есть `on_conflict_do_update` в `sqlite`-диалекте, что даёт готовое сравнение профилей `one.env`/`two.env`.
+1. Диалект-специфичные конструкции (`sqlalchemy.dialects.postgresql`) vs универсальный Core — важная развилка; для SQLite есть `on_conflict_do_update` в `sqlite`-диалекте, что даёт готовое сравнение профилей `prod_db.env`/`dev_sqlite.env`.
 2. `returning(...)` — получение записи без второго SELECT и без ORM-цикла `add → commit → refresh` (прямое сравнение с паттерном 6 из 07).
 3. Инкремент `count + body.count` вычисляется **на стороне БД** — атомарность без блокировок.
 

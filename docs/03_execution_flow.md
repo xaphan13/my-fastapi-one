@@ -138,7 +138,7 @@ MyGunicornApp(
         host=settings.gunicorn.host,           # 0.0.0.0
         port=settings.gunicorn.port,           # 8000
         timeout=settings.gunicorn.timeout,     # 900
-        workers=settings.gunicorn.workers,     # 1 (из two.env)
+        workers=settings.gunicorn.workers,     # 1 (из dev_sqlite.env)
         log_level=settings.logging_gunicorn.log_level,  # info
     ),
 ).run()

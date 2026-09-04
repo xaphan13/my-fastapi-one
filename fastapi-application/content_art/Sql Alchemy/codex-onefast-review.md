@@ -50,7 +50,7 @@
      - на shutdown освобождается SQLAlchemy engine (`engine_dispose`).
 
 3. Конфиг (`core/config.py`):
-   - читается из env-файлов (`two.env`, `.env`) с префиксом `APP__`;
+   - читается из env-файлов (`dev_sqlite.env`, `.env`) с префиксом `APP__`;
    - типизированные блоки: `run`, `api`, `db`, `gunicorn`, `logging_gunicorn`.
 
 4. База данных (`db_core/db_async.py`):

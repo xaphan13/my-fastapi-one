@@ -9,7 +9,7 @@
 3. Закомментированные секции `uvicorn` / `uvicorn.error` / `uvicorn.access` сохранить комментариями и в YAML (русские комментарии → чтение YAML с `encoding="utf-8"`).
 4. Единственная динамика — `filename` хендлера `rotating_file1`: подставляется в коде после `yaml.safe_load` точечно по ключу, вида `cfg["handlers"]["rotating_file1"]["filename"] = str(path_dir / log_file)`. Глобальная `%-`интерполяция всего файла запрещена: в формат-строках живут `%(asctime)s` и т.п.
 5. Поведение не меняется: инициализация на импорте модуля (`ConfigLogger.setting_path_logger(log_file="one_fast.log")` на уровне модуля), итоговый файл `fastapi-application/log/one_fast.log`, экспорты `logF` (`OnlyFile`) и `logFC` (`FileStdout`), публичный API `ConfigLogger` (`setting_path_logger`, `get_logger`) сохраняются.
-6. Расположение YAML-файла: `fastapi-application/logging_config.yaml` (рядом с `config_log.py`, по аналогии с `one.env`/`two.env`).
+6. Расположение YAML-файла: `fastapi-application/logging_config.yaml` (рядом с `config_log.py`, по аналогии с `prod_db.env`/`dev_sqlite.env`).
 
 ## Результат
 

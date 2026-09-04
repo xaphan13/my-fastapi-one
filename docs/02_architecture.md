@@ -347,8 +347,8 @@ React: dangerouslySetInnerHTML + hljs.highlightAll() на клиенте
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(
-            BASE_DIR / "two.env",   # sqlite   ← активный профиль
-            # BASE_DIR / "one.env", # postgres ← закомментирован
+            BASE_DIR / "dev_sqlite.env",   # sqlite   ← активный профиль
+            # BASE_DIR / "prod_db.env", # postgres ← закомментирован
             BASE_DIR / ".env",
         ),
         case_sensitive=False,
@@ -364,7 +364,7 @@ class Settings(BaseSettings):
 
 Правило отображения env → атрибут: `APP__DB__URL` → `settings.db.url`, `APP__GUNICORN__WORKERS` → `settings.gunicorn.workers`.
 
-Приоритет источников (стандартный для pydantic-settings, от высшего к низшему): переменные окружения процесса → `.env` → `two.env`. Файлы в кортеже `env_file` перечитываются слева направо, каждый следующий **переопределяет** предыдущий; `.env` стоит последним и потому имеет наивысший приоритет среди файлов.
+Приоритет источников (стандартный для pydantic-settings, от высшего к низшему): переменные окружения процесса → `.env` → `dev_sqlite.env`. Файлы в кортеже `env_file` перечитываются слева направо, каждый следующий **переопределяет** предыдущий; `.env` стоит последним и потому имеет наивысший приоритет среди файлов.
 
 ### Дерево префиксов маршрутов
 
@@ -389,8 +389,8 @@ class Settings(BaseSettings):
 
 | Профиль | Файл | URL БД |
 |---|---|---|
-| SQLite (активен) | `two.env` | `sqlite+aiosqlite:///./one_simple.db` |
-| PostgreSQL | `one.env` | `postgresql+asyncpg://user:password@localhost:5432/shop` |
+| SQLite (активен) | `dev_sqlite.env` | `sqlite+aiosqlite:///./one_simple.db` |
+| PostgreSQL | `prod_db.env` | `postgresql+asyncpg://user:password@localhost:5432/shop` |
 
 Переключение выполняется **правкой исходного кода** — комментированием/раскомментированием строк в `core/config.py:91-92`. Это не конфигурируется извне, что противоречит остальному дизайну и создаёт риск при развёртывании; см. [04_code_quality.md](04_code_quality.md).
 
