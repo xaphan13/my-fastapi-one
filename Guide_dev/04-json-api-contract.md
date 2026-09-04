@@ -40,7 +40,7 @@ class UserResp(BaseModel):
 
 ## 3. Обработчик: тонкий, типизированный, читаемый
 
-`example_sql/router_users.py` — реальный код:
+`ex_user_post/router_users.py` — реальный код:
 
 ```python
 r_users_sql = APIRouter(

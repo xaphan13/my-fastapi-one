@@ -40,8 +40,8 @@ import main
  │           └─ async_sessionmaker(autoflush=False, expire_on_commit=False)
  │         CurrentSession = Annotated[AsyncSession, Depends(...)]
  │
- └─ 5. Роутеры: api, example_sql.router_users, ex_order_product.router_order_one,
-        md_articles (подключается внутри create_app → register_md_articles)
+ └─ 5. Роутеры: api, ex_user_post.router_users, ex_order_product.router_order_one,
+        md_articles (подключается в main.py через register_md_articles)
        └─ на уровне модулей создаются APIRouter'ы и объекты-зависимости:
           path_reader     (cls_deps.py:48)
           access_required (cls_deps.py:92)
@@ -55,19 +55,18 @@ import main
 
 ```python
 main_app = create_app(custom_docs_url=False)
-# внутри create_app():
-#   register_md_articles(main_app)
-#     ├─ middleware inject_current_user_middleware
-#     ├─ SessionMiddleware (cookie, 14 дней)
-#     ├─ mount /static (аватары)
-#     ├─ handler RequestValidationError → {errors} для /api/blog
-#     └─ include_router(router_blog_api)      # /api/blog/...
 main_app.include_router(router_api)      # /api/v1/...
 main_app.include_router(r_users_sql)     # /users/...
 main_app.include_router(r_order_one)     # /orders/...
-main_app.mount("/assets", ...)           # frontend/dist/assets
-main_app.router.routes.append(           # ПОСЛЕДНИМ: SPA catch-all
-    Route("/{full_path:path}", spa_fallback, methods=["GET"]))
+register_md_articles(main_app)
+#   ├─ middleware inject_current_user_middleware
+#   ├─ SessionMiddleware (cookie, 14 дней)
+#   ├─ mount /static (аватары)
+#   ├─ handler RequestValidationError → {errors} для /api/blog
+#   └─ include_router(router_blog_api)    # /api/blog/...
+setup_spa(main_app)
+#   ├─ mount /assets                      # frontend/dist/assets
+#   └─ catch-all /{full_path:path}        # SPA → dist/index.html
 ```
 
 `create_app()` при `custom_docs_url=False` оставляет `docs_url="/docs"`, `redoc_url="/redoc"` и **не вызывает** `reg_docs_routes(app)`. Ветка с CDN unpkg остаётся неактивной.
@@ -76,7 +75,7 @@ main_app.router.routes.append(           # ПОСЛЕДНИМ: SPA catch-all
 
 ```
 main_app
-├── router_blog_api                  prefix=/api/blog  (из register_md_articles)
+├── router_blog_api                  prefix=/api/blog  (из register_md_articles в main.py)
 ├── router_api                       prefix=/api
 │   └── router_api_v1                prefix=/v1
 │       ├── router_dep_examples      prefix=/dep_examples
@@ -386,7 +385,7 @@ def as_dependency(self, request: Request,
 
 ### Разрешение маршрута
 
-FastAPI обходит `main_app.routes` в порядке регистрации и берёт **первое** совпадение по пути и методу. Порядок задан последовательностью регистрации: `router_blog_api` (внутри `create_app`) → `router_api` → `r_users_sql` → `r_order_one` → mounts → catch-all. Конфликтов путей нет — префиксы `/api/blog`, `/api/v1`, `/users`, `/orders` не пересекаются; catch-all замыкает список и отдаёт SPA `index.html` всем остальным GET-путям.
+FastAPI обходит `main_app.routes` в порядке регистрации и берёт **первое** совпадение по пути и методу. Порядок задан последовательностью в `main.py`: `router_api` → `r_users_sql` → `r_order_one` → `router_blog_api` (из `register_md_articles`) → mount `/static` → mount `/assets` → catch-all. Конфликтов путей нет — префиксы `/api/v1`, `/users`, `/orders`, `/api/blog`, `/static`, `/assets` не пересекаются; catch-all замыкает список и отдаёт SPA `index.html` всем остальным GET-путям.
 
 Четыре обработчика с идентичным путём `/my_items/{item_id}` разведены префиксами на уровне `my_routes_dep/__init__.py`, поэтому коллизии не возникает. В графе кода они схлопнулись в один узел `Route`, но в рантайме это четыре разных маршрута.
 
@@ -436,7 +435,7 @@ FastAPI обходит `main_app.routes` в порядке регистраци�
 
 ### Middleware
 
-**Пользовательских middleware два**, оба подключает `register_md_articles` (в `create_app`):
+**Пользовательских middleware два**, оба подключает `register_md_articles` в `main.py`:
 
 1. **`SessionMiddleware`** (starlette, `add_middleware`) — подписанные cookie-сессии: ключ `settings.web.secret_key`, `max_age = 14 дней`. В сессии живут `user_id` и `csrf_token`.
 2. **`inject_current_user_middleware`** (`app.middleware("http")`) — на каждый HTTP-запрос открывает сессию БД через `db_manager.session_factory()`, по `session["user_id"]` делает `SELECT blog_user` и кладёт результат (или `None`) в `request.state.current_user`. Все обработчики блога читают пользователя из `request.state`, а не из зависимости.
@@ -480,7 +479,7 @@ FastAPI обходит `main_app.routes` в порядке регистраци�
 - `cls_deps.py` — `401 UNAUTHORIZED` (демо-токен);
 - `api_blog.py` — `403` (CSRF mismatch, `require_login_api`), `400` (уже авторизован), `401` (неверный логин/пароль), `404` (статья не найдена).
 
-**Кастомный обработчик исключений один**: `custom_request_validation_exception_handler` (регистрируется в `register_md_articles`) переписывает ответы `RequestValidationError` в формат `{"errors": {...}}`, но **только** для путей `/api/blog*` — остальные пути получают стандартный формат FastAPI. Формат нужен фронтенду: он раскладывает ошибки по полям формы.
+**Кастомный обработчик исключений один**: `custom_request_validation_exception_handler` (регистрируется в `register_md_articles` при подключении блога в `main.py`) переписывает ответы `RequestValidationError` в формат `{"errors": {...}}`, но **только** для путей `/api/blog*` — остальные пути получают стандартный формат FastAPI. Формат нужен фронтенду: он раскладывает ошибки по полям формы.
 
 При этом `IntegrityError` по-прежнему не обрабатывается: нарушение `UniqueConstraint` (например, дублирующийся `nickname` в `POST /users/create_user`) даёт **500** вместо 409. В блоге этой проблемы нет — уникальность username/email проверяется явными `SELECT`-запросами до вставки.
 

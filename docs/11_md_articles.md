@@ -109,7 +109,7 @@ frontend/                  # Отдельное React-приложение (св
 
 ## Архитектура и слои
 
-Подключение — `create_fastapi.py::create_app()` вызывает `register_md_articles(app)`:
+Подключение — `main.py` после доменных `include_router` и до `setup_spa(main_app)` вызывает `register_md_articles(main_app)`:
 
 1. **middleware** `inject_current_user_middleware` — загружает `current_user`
    (по `session["user_id"]`) в `request.state`; поверх `SessionMiddleware`

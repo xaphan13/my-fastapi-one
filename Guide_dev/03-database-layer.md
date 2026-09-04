@@ -112,7 +112,7 @@ class OrderProductAssociation(Base):
 ## 5. CRUD-слой: функции с сессией в аргументе
 
 Репозиторий здесь — модуль свободных функций, принимающих сессию первым
-аргументом (`example_sql/crud/crud_users.py`):
+аргументом (`ex_user_post/crud/crud_users.py`):
 
 ```python
 async def get_all_users(session: AsyncSession) -> Sequence[User]:

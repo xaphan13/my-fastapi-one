@@ -47,11 +47,10 @@ def create_app(custom_docs_url: bool = False) -> FastAPI:
         - `default_response_class=ORJSONResponse`
           (быстрее `jsonable_encoder` на типичных pydantic-моделях);
         - подключённым `lifespan` (см. выше);
-        - блогом `md_articles` через `register_md_articles(app)`
-          (middleware + mount `/static` + JSON-роутер `/api/blog`);
         - кастомными Swagger/ReDoc, если `custom_docs_url=True`.
 
-    Роутеры демо-части (`api/`, `ex_user_post/`, `ex_order_product/`)
+    Роутеры демо-части (`api/`, `ex_user_post/`, `ex_order_product/`),
+    блог `md_articles` через `md_articles.register_md_articles(app)`
     и SPA (`frontend_spa.setup_spa`) подключаются в `main.py`
     ПОСЛЕ вызова `create_app()` — фабрика их не знает.
 

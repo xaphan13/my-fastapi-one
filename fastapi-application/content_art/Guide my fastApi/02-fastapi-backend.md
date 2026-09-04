@@ -44,8 +44,6 @@ def create_app(custom_docs_url: bool = False) -> FastAPI:
         docs_url=docs_url,
         redoc_url=redoc_url,
     )
-    from md_articles import register_md_articles
-    register_md_articles(app)                    # блог: middleware + mount + роутер
     return app
 ```
 
@@ -62,10 +60,17 @@ def create_app(custom_docs_url: bool = False) -> FastAPI:
 что-то упало — это современный рекомендуемый способ (старые `@app.on_event`
 объявлены устаревшими).
 
+**Блог (`md_articles`) подключается из `main.py`, не из фабрики.**
+`register_md_articles(main_app)` вызывается после доменных `include_router`
+и до mount-статики/catch-all — он добавляет `SessionMiddleware`,
+`inject_current_user_middleware`, mount `/static` (аватары), exception-handler
+для 422 и `router_blog_api`. Фабрика про блог ничего не знает: это позволяет
+тестам собирать приложение без блога или с минимальным набором middleware.
+
 ## 3. Сборка приложения и SPA-слой
 
-`main.py` — точка входа. Обратите внимание на порядок: роутеры → mount статики →
-catch-all **последним** (реальный код, упрощён):
+`main.py` — точка входа. Обратите внимание на порядок: роутеры → блог → mount
+статики → catch-all **последним** (реальный код, упрощён):
 
 ```python
 main_app = create_app(custom_docs_url=False)
@@ -73,6 +78,8 @@ main_app = create_app(custom_docs_url=False)
 main_app.include_router(router_api)        # /api/v1/...  (демо-часть)
 main_app.include_router(r_users_sql)       # /users/...
 main_app.include_router(r_order_one)       # /orders/...
+
+register_md_articles(main_app)             # блог: middleware + mount /static + router_blog_api
 
 main_app.mount(
     "/assets",

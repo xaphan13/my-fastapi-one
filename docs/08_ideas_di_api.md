@@ -172,7 +172,7 @@ async def create_user(session: AsyncSession, user_create: UserCreate) -> User:
 
 ### Куда положить
 
-- `api/dependencies/auth.py`, правки в `example_sql/schemas/schema_user.py` (UserBase/UserCreate/UserResp — паттерн из 07), роут `/users/login`.
+- `api/dependencies/auth.py`, правки в `ex_user_post/schemas/schema_user.py` (UserBase/UserCreate/UserResp — паттерн из 07), роут `/users/login`.
 - Приоритет: **высокий** — закрывает P1-дефекты 04/07.
 
 ---
@@ -232,7 +232,7 @@ async def register_with_post(body: UserWithPostBody, session: CurrentTxSession):
 
 ### Куда положить
 
-- `db_core/db_async_tx.py`, демо-роут в `example_sql/router_users.py`.
+- `db_core/db_async_tx.py`, демо-роут в `ex_user_post/router_users.py`.
 - Приоритет: **высокий**.
 
 ---

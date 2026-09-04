@@ -8,7 +8,8 @@
 - [`docs/11_md_articles.md`](11_md_articles.md) — отличия этой реализации
   от исходного Flask-блога.
 - [`docs/14_create_fastapi_factory.md`](14_create_fastapi_factory.md) —
-  место `register_md_articles` в общем каркасе приложения.
+  место `register_md_articles` в общем каркасе приложения (сейчас
+  вызывается из `main.py`, не из `create_app()`).
 - [`docs/12_fastapi_react_integration.md`](12_fastapi_react_integration.md) —
   как SPA получает данные блога через `/api/blog`.
 
@@ -26,7 +27,7 @@ md_articles/
 
 | Файл | Зона | Что внутри |
 |---|---|---|
-| `__init__.py` | каркас | `inject_current_user_middleware`, `register_md_articles` |
+| `__init__.py` | plug-in | `inject_current_user_middleware`, `register_md_articles` (вызывается из `main.py`) |
 | `api_blog.py` | API | роутер `router_blog_api` (prefix `/api/blog`), pydantic-схемы запросов/ответов, CSRF-хелперы, exception-handler для 422 |
 | `schema_art.py` | данные | модель `ArticleLang`, чтение/запись `articles.yaml` с mtime-кэшем, рендер `.md` через `markdown()`, сканирование `content_art/` |
 | `models.py` | данные | `BlogUser`, `BlogPost` (SQLAlchemy 2.0, попадают в `Base.metadata` для Alembic) |
@@ -39,14 +40,17 @@ md_articles/
 
 - `inject_current_user_middleware(request, call_next)` — HTTP-middleware,
   подгружающая `current_user` на каждый запрос.
-- `register_md_articles(app)` — plug-in, вызываемый из `create_app()`
-  (см. `create_fastapi.py`).
+- `register_md_articles(app)` — plug-in, вызываемый из `main.py`
+  после доменных `include_router` и до `setup_spa(main_app)`.
 
 `register_md_articles` делает четыре вещи в строгом порядке:
 
 1. `app.middleware("http")(inject_current_user_middleware)` — middleware
-   **до** роутера, чтобы к моменту вызова любого эндпоинта блога
-   `request.state.current_user` уже был заполнен.
+   добавляется **до** `include_router(router_blog_api)`, чтобы к моменту
+   вызова любого эндпоинта блога `request.state.current_user` уже был
+   заполнен. Доменные роутеры, добавляемые в `main.py` **до** этого
+   вызова, тоже оказываются под этой middleware — Starlette оборачивает
+   ею весь ASGI-стек, порядок `include_router` не важен.
 2. `app.add_middleware(SessionMiddleware, secret_key=..., max_age=14 дней)`
    — сессии на основе подписанных cookie (Starlette). Без неё
    `request.session` в обработчиках упадёт.

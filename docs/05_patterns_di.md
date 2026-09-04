@@ -16,7 +16,7 @@
 | Внедрение зависимостей | 9 способов `Depends` | `api/dependencies/` |
 | Извлечение параметров | 4 стиля одного эндпоинта `/my_items/{item_id}` | `api/my_routes_dep/` |
 | Валидация pydantic | `Field`/`Annotated`, `AfterValidator`/`field_validator` | `api/my_routes_dep/` |
-| Асинхронный слой данных | SQLAlchemy 2.0 async, отношения, миграции | `example_sql/`, `ex_order_product/`, `db_core/` |
+| Асинхронный слой данных | SQLAlchemy 2.0 async, отношения, миграции | `ex_user_post/`, `ex_order_product/`, `db_core/` |
 
 Дальше — по каждому приёму с кодом.
 
@@ -53,7 +53,7 @@ db_manager = AsyncDbManager(url=str(settings.db.url), ...)
 CurrentSession = Annotated[AsyncSession, Depends(db_manager.get_async_session)]
 ```
 
-А в обработчике (`example_sql/router_users.py`):
+А в обработчике (`ex_user_post/router_users.py`):
 
 ```python
 @r_users_sql.get("/get_all_users", response_model=list[UserResp])

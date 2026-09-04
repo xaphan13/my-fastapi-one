@@ -16,7 +16,7 @@
 
 ### Шаблон кода
 
-Новые файлы `example_sql/repositories/interfaces.py`, `.../sqlalchemy_repo.py`:
+Новые файлы `ex_user_post/repositories/interfaces.py`, `.../sqlalchemy_repo.py`:
 
 ```python
 # interfaces.py — абстракция, ноль импортов SQLAlchemy
@@ -78,7 +78,7 @@ main_app.dependency_overrides[get_users_repository] = lambda: InMemoryUsersRepos
 
 ### Куда положить
 
-- `example_sql/repositories/` (interfaces, sqlalchemy, in_memory для тестов), правка `router_users.py`.
+- `ex_user_post/repositories/` (interfaces, sqlalchemy, in_memory для тестов), правка `router_users.py`.
 - Приоритет: **высокий** — это «недостающий этаж» архитектуры из 02.
 
 ---
@@ -349,7 +349,7 @@ class Order(Base):
 
 | Идея | Дополняет паттерн из 07 | Приоритет | Новые файлы |
 |---|---|---|---|
-| DB-1 Repository на Protocol | 11 (CRUD-слой) | высокий | `example_sql/repositories/` |
+| DB-1 Repository на Protocol | 11 (CRUD-слой) | высокий | `ex_user_post/repositories/` |
 | DB-2 Upsert on_conflict | 6 (ORM vs Core INSERT) | средний | `ex_order_product/crud/crud_association.py` |
 | DB-3 Мягкое удаление | 2 (Annotated-типы колонок) | средний | правки `type_for_models.py`, миграция |
 | DB-4 Оптимистичная блокировка | 6 (первый UPDATE в проекте) | средний | `model_order_product.py`, `PATCH /products/{id}` |

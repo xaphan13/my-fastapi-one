@@ -106,7 +106,7 @@ class User(Base):
 
 ## Паттерн 3. One-to-many: `User` → `Post` с каскадом
 
-`example_sql/models/model_user_post.py`:
+`ex_user_post/models/model_user_post.py`:
 
 ```python
 class User(Base):
@@ -473,9 +473,9 @@ OrderProductBase (from_attributes = True)
 
 Проект показывает **два уровня архитектуры** предметных областей, чтобы было что сравнить.
 
-### Правильный вариант: `example_sql/` (с CRUD-слоем)
+### Правильный вариант: `ex_user_post/` (с CRUD-слоем)
 
-`example_sql/crud/crud_users.py`:
+`ex_user_post/crud/crud_users.py`:
 
 ```python
 async def get_all_users(session: AsyncSession) -> Sequence[User]:
@@ -585,4 +585,4 @@ class UserResp(UserBase):
 | SQLite FK | `PRAGMA foreign_keys=ON` | `db_core/db_async.py` | 07 |
 | Загрузка связей | `joinedload` + `.unique()` | `router_order_one.py` | 07 |
 | Безопасная сортировка | Whitelist вместо `getattr` | `router_order_one.py` | 07 |
-| Слоистая архитектура | CRUD-слой отдельно от роутов | `example_sql/` | 07 |
+| Слоистая архитектура | CRUD-слой отдельно от роутов | `ex_user_post/` | 07 |

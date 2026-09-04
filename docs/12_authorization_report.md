@@ -50,7 +50,7 @@
 | Часть проекта | Авторизация |
 |---|---|
 | `api/` (демо Depends, 4 стиля параметров) | нет — учебная витрина, открыта намеренно |
-| `example_sql/` (`/users` CRUD User/Post) | нет |
+| `ex_user_post/` (`/users` CRUD User/Post) | нет |
 | `ex_order_product/` (`/orders` CRUD) | нет |
 | `md_articles/` (JSON API `/api/blog` + SPA) | **есть** — сессии, bcrypt, CSRF |
 

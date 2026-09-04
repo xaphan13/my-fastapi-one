@@ -142,10 +142,10 @@ API-путь, например `GET /api/typo`, привёл бы к таком�
 порядке (упрощённо):
 
 1. `/openapi.json`, `/docs`, `/redoc`, `/docs/oauth2-redirect` (utils/docs.py)
-2. роутеры из `create_fastapi()` (через `md_articles.register_md_articles(app)`)
-3. `router_api` (9 dep_examples + 4 my_items)
-4. `r_users_sql` (CRUD User/Post)
-5. `r_order_one` (Order)
+2. `router_api` (9 dep_examples + 4 my_items)
+3. `r_users_sql` (CRUD User/Post)
+4. `r_order_one` (Order)
+5. `router_blog_api` (из `register_md_articles(main_app)` в `main.py`)
 6. `app.mount('/static', ...)` (аватары из md_articles)
 7. `app.mount('/assets', StaticFiles(...))` ← **setup_spa, шаг 1**
 8. `Route('/{full_path:path}', spa_fallback, methods=['GET'])` ← **setup_spa, шаг 2**
@@ -170,11 +170,12 @@ API-путь, например `GET /api/typo`, привёл бы к таком�
 ## 4. Почему именно такой порядок вызовов в `main.py`
 
 ```python
-main_app = create_app(...)          # lifespan + md_articles
+main_app = create_app(...)          # каркас: FastAPI + lifespan + /docs
 main_app.include_router(router_api)
 main_app.include_router(r_users_sql)
 main_app.include_router(r_order_one)
-setup_spa(main_app)                 # ← СТРОГО после include_router
+register_md_articles(main_app)      # middleware + mount /static + router_blog_api
+setup_spa(main_app)                 # ← СТРОГО после register_md_articles
 ```
 
 `setup_spa` дописывает два новых элемента в `router.routes`. Если его вызвать
@@ -269,11 +270,11 @@ app.router.routes.append(Route("/{full_path:path}", spa_fallback))
 эффект. С `methods=["GET"]` POST-запросы идут мимо catch-all и получают
 нормальный 404 от Starlette.
 
-### Поменять порядок mount'ов: `setup_spa` до `md_articles`
+### Поменять порядок mount'ов: `setup_spa` до `register_md_articles`
 
-В этом проекте `create_app()` уже вызывает `md_articles.register_md_articles(app)`
-внутри, а `main.py` вызывает `setup_spa` после всех `include_router` в `main.py`.
-Но если бы `setup_spa` оказался до `register_md_articles`, mount `/assets` шёл
+В этом проекте `main.py` вызывает `register_md_articles(main_app)` после
+доменных `include_router`, а `setup_spa(main_app)` — после `register_md_articles`.
+Если бы `setup_spa` оказался до `register_md_articles`, mount `/assets` шёл
 бы **раньше** API-роутеров блога. Здесь это безопасно (разные префиксы — `/api`
 против `/assets`), но **плохая привычка** — порядок mount'ов в `router.routes`
 меняет приоритет, и в других проектах это может выстрелить.

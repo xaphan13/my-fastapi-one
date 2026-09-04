@@ -17,8 +17,9 @@
 │                   JSON-запросы к /api/blog, cookie-сессии         │
 ├──────────────────────────────────────────────────────────────────┤
 │  Композиция       create_fastapi.create_app() → main.main_app     │
-│                   include_router × 3 + register_md_articles,      │
-│                   mount /assets, SPA catch-all, lifespan          │
+│                   include_router × 3 + register_md_articles +    │
+│                   setup_spa (mount /assets, SPA catch-all),       │
+│                   lifespan                                       │
 ├──────────────────────────────────────────────────────────────────┤
 │  Presentation     APIRouter'ы; pydantic-схемы запросов/ответов    │
 │                   валидация входа и сериализация выхода;          │
@@ -27,8 +28,8 @@
 │  Dependency       Depends: сессия БД, извлечение параметров,      │
 │  Injection        проверка токена, require_login_api, фабрики     │
 ├──────────────────────────────────────────────────────────────────┤
-│  Application      example_sql/crud/  ← присутствует               │
-│                   ex_order_product/  ← ОТСУТСТВУЕТ (SQL в роутах) │
+│  Application      ex_user_post/crud/  ← присутствует              │
+│                   ex_order_product/   ← ОТСУТСТВУЕТ (SQL в роутах) │
 ├──────────────────────────────────────────────────────────────────┤
 │  Data Access      AsyncDbManager, AsyncSession, ORM-модели        │
 ├──────────────────────────────────────────────────────────────────┤
@@ -70,14 +71,10 @@ def create_app(custom_docs_url: bool = False) -> FastAPI:
     if custom_docs_url:
         reg_docs_routes(app)
 
-    from md_articles import register_md_articles
-
-    register_md_articles(app)
-
     return app
 ```
 
-Фабрика параметризована одним флагом, переключающим встроенную документацию на кастомную (`utils/docs.py`). В отличие от роутеров доменов, подключение блога вынесено **внутрь** фабрики: `register_md_articles(app)` добавляет middleware сессий, mount `/static`, обработчик валидационных ошибок и `router_blog_api`. Роутеры доменов подключаются **снаружи** — в `main.py`, что делает `create_app()` пригодным для тестов с изолированным набором роутеров.
+Фабрика параметризована одним флагом, переключающим встроенную документацию на кастомную (`utils/docs.py`). Каркас ограничен конструктором `FastAPI(...)` и `lifespan` — блог подключается **снаружи** в `main.py` через `register_md_articles(main_app)` после доменных `include_router`. Это даёт два эффекта: (1) `create_app()` возвращает минимальный каркас без middleware блога — тестам удобно подключать только нужное; (2) в `main.py` виден полный «рецепт» приложения (домены → блог → SPA).
 
 ### 2. Dependency Injection (основной паттерн проекта)
 
@@ -114,7 +111,7 @@ def get_header_dependency(header_name: str, default_value: str = ""):
 
 ### 3. Repository / Data Access Object — частично
 
-`example_sql/crud/crud_users.py` реализует функциональный вариант репозитория: модуль свободных функций, принимающих `session` первым аргументом.
+`ex_user_post/crud/crud_users.py` реализует функциональный вариант репозитория: модуль свободных функций, принимающих `session` первым аргументом.
 
 ```python
 async def get_all_users(session: AsyncSession) -> Sequence[User]: ...
@@ -158,7 +155,7 @@ time_stamp_utc  = Annotated[datetime, mapped_column(DateTime(timezone=True),
 
 ### 6. Mixin
 
-`example_sql/models/model_id_pk_mixin.py` — `IntIdPkMixin` как альтернатива `Annotated`-типу для того же PK. Применён только в `TestUser`; остальные модели используют `int_primary_key`. Два способа решения одной задачи сосуществуют — это демонстрационный, а не производственный выбор.
+`ex_user_post/models/model_id_pk_mixin.py` — `IntIdPkMixin` как альтернатива `Annotated`-типу для того же PK. Применён только в `TestUser`; остальные модели используют `int_primary_key`. Два способа решения одной задачи сосуществуют — это демонстрационный, а не производственный выбор.
 
 ### 7. Adapter (внешняя библиотека → внутренний интерфейс)
 
@@ -258,7 +255,7 @@ FastAPI: r_users_sql → create_user
   session: CurrentSession
   user_create: Annotated[UserCreate, Body()]  ← валидация схемы
   ▼
-Обработчик create_user (example_sql/router_users.py)
+Обработчик create_user (ex_user_post/router_users.py)
   │  делегирует в слой приложения
   ▼
 users_crud.create_user(session=session, user_create=user_create)
@@ -379,7 +376,7 @@ class Settings(BaseSettings):
 | `api.v1.fastapi_class_annotated` | `/fastapi_class_annotated` | `my_routes_dep/__init__.py` |
 | `api.v1.depends_class_annotated` | `/depends_class_annotated` | `my_routes_dep/__init__.py` |
 | `api.v1.depends_function_annotated` | `/depends_function_annotated` | `my_routes_dep/__init__.py` |
-| `api.user_post_prefix` | `/users` | `example_sql/router_users.py` |
+| `api.user_post_prefix` | `/users` | `ex_user_post/router_users.py` |
 | `api.order_product_prefix` | `/orders` | `ex_order_product/router_order_one.py` |
 | — (хардкод) | `/api/blog` | `md_articles/api_blog.py` → `router_blog_api` |
 

@@ -71,7 +71,7 @@
 
 **Interface Segregation — соблюдается.** Иерархия response-схем в `schema_order_product.py` — это и есть сегрегация: клиент получает ровно тот набор полей, который соответствует стратегии загрузки связей в запросе.
 
-**Dependency Inversion — соблюдается частично.** Обработчики зависят от абстракции `CurrentSession`, а не от конкретного движка. Но `example_sql/router_users.py` импортирует конкретный модуль `crud_users` напрямую, а `ex_order_product` вообще обходится без слоя абстракции.
+**Dependency Inversion — соблюдается частично.** Обработчики зависят от абстракции `CurrentSession`, а не от конкретного движка. Но `ex_user_post/router_users.py` импортирует конкретный модуль `crud_users` напрямую, а `ex_order_product` вообще обходится без слоя абстракции.
 
 ### DRY
 
@@ -112,7 +112,7 @@
 
 ### P1-1. Пароль возвращается клиенту
 
-`example_sql/schemas/schema_user.py`:
+`ex_user_post/schemas/schema_user.py`:
 
 ```python
 class UserCreate(BaseModel):
@@ -183,7 +183,7 @@ order0, order1 = result_scalars_all[0], result_scalars_all[1]
 
 ### P2-1. `TestUser` невидим для Alembic
 
-`db_core/__init__.py` реэкспортирует `User`, `Post`, `Order`, `Product`, `OrderProductAssociation`, но **не** `TestUser` из `example_sql/models/model_user_mix.py`. `alembic/env.py` берёт `target_metadata` из `db_core.Base`, поэтому при `alembic revision --autogenerate` таблица `test_users` в `Base.metadata` отсутствует. Если бы она существовала в БД, autogenerate сгенерировал бы `op.drop_table("test_users")`.
+`db_core/__init__.py` реэкспортирует `User`, `Post`, `Order`, `Product`, `OrderProductAssociation`, но **не** `TestUser` из `ex_user_post/models/model_user_mix.py`. `alembic/env.py` берёт `target_metadata` из `db_core.Base`, поэтому при `alembic revision --autogenerate` таблица `test_users` в `Base.metadata` отсутствует. Если бы она существовала в БД, autogenerate сгенерировал бы `op.drop_table("test_users")`.
 
 Исправление: добавить `TestUser` в реэкспорт либо удалить модель, если она не нужна.
 
@@ -322,8 +322,8 @@ def validate_path_is_even(cls, v: int) -> int:
 
 | # | Дефект | Файл | Приоритет |
 |---|---|---|---|
-| 1 | Пароль в ответе API | `example_sql/schemas/schema_user.py` | P1 |
-| 2 | Пароли не хешируются | `example_sql/crud/crud_users.py`, модель `User` | P1 |
+| 1 | Пароль в ответе API | `ex_user_post/schemas/schema_user.py` | P1 |
+| 2 | Пароли не хешируются | `ex_user_post/crud/crud_users.py`, модель `User` | P1 |
 | 3 | `.env` с паролем в git | `.gitignore` | P1 |
 | 4 | Пароль БД в логах | `create_fastapi.py` (`lifespan`) | P1 |
 | 5 | `validate_query_safe` падает на `None` | `api/my_routes_dep/pydantic_validator.py` | P1 |

@@ -68,9 +68,9 @@ def register_md_articles(app: FastAPI) -> None:
     """
     Подключает блог к FastAPI: middleware, сессии, статика, JSON-роутер.
 
-    Это plug-in, вызываемый из `create_app()` (см. `create_fastapi.py`).
-    Делает четыре вещи — в строгом порядке, потому что порядок здесь
-    важен (см. ниже):
+    Это plug-in, вызываемый из `main.py` сразу после трёх доменных
+    `include_router` и до `setup_spa(main_app)`. Делает четыре вещи —
+    в строгом порядке, потому что порядок здесь важен (см. ниже):
 
       1. `app.middleware("http")(inject_current_user_middleware)`
          — добавляет HTTP-middleware, описанную выше. Должно быть
@@ -97,13 +97,13 @@ def register_md_articles(app: FastAPI) -> None:
          **локально** — он нужен только здесь, и поднимать его в
          шапку модуля ради одного использования нет смысла.
 
-    Почему вызывается именно из `create_app()`, а не из `main.py`:
-      Сборка приложения (каркас) живёт в `create_fastapi.py`, наполнение
-      (доменные роутеры) — в `main.py`. Блог относится к каркасу: он
-      вешает middleware и mount, и это должно произойти **до** того,
-      как `main.py` начнёт добавлять `include_router` для доменов.
-      Подробнее о разделении «каркас vs наполнение» — в
-      `docs/14_create_fastapi_factory.md`.
+    Подключается из `main.py` после доменных `include_router` и до
+    `setup_spa(main_app)`. Порядок включения middleware относительно
+    `include_router` не критичен — middleware в Starlette оборачивают
+    весь стек ASGI, — но семантически опасно: если переставить вызов
+    или забыть его, роутеры блога (`/api/blog/*`) не зарегистрируются.
+    Доменные роутеры `request.session` не используют, поэтому текущий
+    порядок безопасен.
     """
     logF.info("register_md_articles: подключение middleware, static, router_blog_api")
 

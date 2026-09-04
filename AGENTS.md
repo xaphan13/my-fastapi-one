@@ -14,7 +14,7 @@
 1. **Демонстрационная** (`api/`) — показывает варианты одного и того же решения рядом:
    девять способов `Depends`, один эндпоинт `/my_items/{item_id}` в четырёх стилях
    извлечения параметров, два стиля pydantic-полей, два способа валидации.
-2. **Рабочая** (`example_sql/`, `ex_order_product/`, `db_core/`) — асинхронный слой
+2. **Рабочая** (`ex_user_post/`, `ex_order_product/`, `db_core/`) — асинхронный слой
    данных на SQLAlchemy 2.0 с миграциями Alembic и двумя доменами: `User`/`Post`
    (one-to-many) и `Order`/`Product` (many-to-many через явную ассоциативную модель).
 3. **Блог** (`md_articles/` + `frontend/`) — React SPA на JSON API `/api/blog`:
@@ -47,15 +47,15 @@
 ### Архитектура
 
 `fastapi-application/create_fastapi.py` предоставляет фабрику `create_app()` с `lifespan`
-(engine создаётся на импорте, dispose — в shutdown). `main.py` собирает `main_app`
-и подключает три корневых роутера; `create_app()` дополнительно вызывает
-`md_articles.register_md_articles(app)` — сессии, статика `/static`, HTML-обработчики
-ошибок и три роутера блога (детали — [`docs/11_md_articles.md`](docs/11_md_articles.md)):
+(engine создаётся на импорте, dispose — в shutdown). `main.py` собирает `main_app`,
+подключает три корневых роутера, вызывает `md_articles.register_md_articles(main_app)`
+(сессии, статика `/static`, JSON-роутер блога) и затем `setup_spa(main_app)`
+(детали — [`docs/11_md_articles.md`](docs/11_md_articles.md)):
 
 | Роутер | Модуль | Префикс | Что внутри |
 |---|---|---|---|
 | `router_api` | `api/__init__.py` | `/api/v1` | `dep_examples/` (9 роутов Depends) + 4 стиля `/my_items/{item_id}` |
-| `r_users_sql` | `example_sql/router_users.py` | `/users` | CRUD-слой домена User/Post (2 роута) |
+| `r_users_sql` | `ex_user_post/router_users.py` | `/users` | CRUD-слой домена User/Post (2 роута) |
 | `r_order_one` | `ex_order_product/router_order_one.py` | `/orders` | 6 роутов Order: ORM/Core запись, фильтры, сортировка, joinedload |
 | `router_blog_api` | `md_articles/api_blog.py` | `/api/blog` | JSON API блога для React SPA: csrf, current_user, register/login/logout, account (GET/POST), articles, articles/{id}, art_manage + add_all + meta |
 
@@ -86,14 +86,14 @@ my-fastapi-one/                 <- корень репозитория; здес
     ├── main.py                  main_app + подключение роутеров + setup_spa() (SPA-слой в frontend_spa.py)
     ├── frontend_spa.py          mount /assets + SPA catch-all + защита /api* (см. docs/13)
     ├── main_gunicorn.py         точка входа gunicorn (переиспользует main_app)
-    ├── create_fastapi.py        фабрика create_app() + lifespan + register_md_articles
+    ├── create_fastapi.py        фабрика create_app() + lifespan (блог подключается в main.py)
     ├── base_dir_path.py         DIR_CWD / BASE_DIR (Path)
     ├── config_log.py            ConfigLogger: dictConfig, файл+stdout
     ├── one.env two.env          профили БД: postgres / sqlite (закоммичены, sqlite активен)
     ├── core/config.py           Settings: весь конфиг, env_file-профили
     ├── db_core/                 Base, AsyncDbManager, CurrentSession, типы колонок
     ├── api/                     демонстрационная часть: dependencies/ + my_routes_dep/
-    ├── example_sql/             домен User/Post: router + crud + models + schemas
+    ├── ex_user_post/             домен User/Post: router + crud + models + schemas
     ├── ex_order_product/        домен Order/Product: router + models + schemas
     ├── md_articles/             блог: api_blog.py (JSON API), schema_art, модели, web_utils
     ├── content_art/             .md-статьи блога (кладёт пользователь)
@@ -275,7 +275,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/   # SPA (нуж�
 - Дублирующийся `nickname` в `POST /users/create_user` даёт **500** (`IntegrityError`)
   вместо 409 — нет перехвата исключения целостности.
 - `UserResp` наследует поле `password` от `UserCreate` (утечка в ответе).
-- `example_sql/models/model_user_mix.py::TestUser` не реэкспортирован в
+- `ex_user_post/models/model_user_mix.py::TestUser` не реэкспортирован в
   `db_core/__init__.py` — невидим для Alembic (намеренная демонстрация примеси).
 
 ### Docker
