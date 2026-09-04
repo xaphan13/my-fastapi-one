@@ -1,9 +1,6 @@
 """
 Подключение собранного React-приложения (SPA) к FastAPI.
-
 Этот модуль — единственная точка, в которой FastAPI узнаёт про фронтенд.
-Вынесен из main.py, чтобы код сборки приложения не смешивался с раздачей
-статики и клиентского HTML.
 
 Что именно делает setup_spa(app):
   1) app.mount('/assets', StaticFiles(frontend/dist/assets, check_dir=False))
@@ -19,11 +16,12 @@
      /api* — JSONResponse 404, чтобы клиент не получал HTML вместо JSON
      на несуществующий API-путь (иначе fetch упадёт с SyntaxError).
 
-Подробное объяснение каждой детали и пошаговая трассировка запросов — в
-docs/13_frontend_spa_module.md. Архитектурное сравнение способов подключения
-(почему именно SPA-в-FastAPI, а не Next.js или раздельные домены) — в
-docs/12_fastapi_react_integration.md.
+Подробное объяснение каждой детали и пошаговая трассировка запросов
+в docs/13_frontend_spa_module.md.
+Архитектурное сравнение способов подключения
+в docs/12_fastapi_react_integration.md.
 """
+
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -33,13 +31,14 @@ from base_dir_path import BASE_DIR
 from config_log import logF
 
 # ── пути к собранному фронту ──────────────────────────────────────────────────
-# BASE_DIR указывает на fastapi-application/. Корень репозитория — его
-# родитель. Vite по умолчанию кладёт сборку в frontend/dist, а все
+# BASE_DIR указывает на fastapi-application/. Корень репозитория — его родитель.
+# Vite по умолчанию кладёт сборку в frontend/dist, а все
 # хэшированные ассеты (JS/CSS с content-hash в имени) — в frontend/dist/assets.
 #
 # Важно: dist/ живёт ЗА пределами fastapi-application/, потому что фронт и
 # бэкенд — два независимых пакета в монорепо. Если когда-нибудь захочется
 # собирать фронт в fastapi-application/static/dist, менять нужно только здесь.
+
 FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
 ASSETS_DIR = FRONTEND_DIST / "assets"
 INDEX_HTML = FRONTEND_DIST / "index.html"
@@ -102,7 +101,5 @@ def setup_spa(app: FastAPI) -> None:
         StaticFiles(directory=ASSETS_DIR, check_dir=False),
         name="spa_assets",
     )
-    app.router.routes.append(
-        Route("/{full_path:path}", spa_fallback, methods=["GET"])
-    )
+    app.router.routes.append(Route("/{full_path:path}", spa_fallback, methods=["GET"]))
     logF.info(f"SPA подключена: index={INDEX_HTML}, assets={ASSETS_DIR}")

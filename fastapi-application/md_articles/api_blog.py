@@ -589,5 +589,8 @@ async def art_manage_sync_api(request: Request, _user=Depends(require_login_api)
 
     removed, total = sync_registry_with_disk()
     if removed > 0:
-        return {"message": f"Удалено сиротских записей: {removed}. Всего статей: {total}", "category": "success"}
+        return {
+            "message": f"Удалено сиротских записей: {removed}. Всего статей: {total}",
+            "category": "success",
+        }
     return {"message": "Синхронизация не требуется — сиротских записей нет", "category": "info"}

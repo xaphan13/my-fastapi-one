@@ -12,27 +12,8 @@
   - `models.py` — SQLAlchemy-модели `BlogUser`, `BlogPost`.
   - `web_utils.py` — `get_current_user`, `login_user`/`logout_user`,
     bcrypt-хелперы `hash_password`/`verify_password`.
-
-Чем этот файл НЕ является:
-  Этот модуль — **точка входа в пакет**, а не «свалка конфигурации».
-  Здесь только то, что относится к подключению блога к FastAPI
-  (middleware, mount, вызов роутера). Сами роутеры, схемы статей и
-  модели живут в своих файлах и подключаются отсюда явно.
-
-Побочные эффекты на импорте:
-  `from md_articles import register_md_articles` подтягивает:
-    - `api_blog` (импортирует pydantic-схемы статей, `RequestValidationError`);
-    - `web_utils` (bcrypt);
-    - `models` (`BlogUser`, `BlogPost` — попадают в `Base.metadata`
-      для Alembic, поэтому модели реэкспортированы здесь неявно через
-      импорт в `db_core/__init__.py`).
-  Сам по себе импорт `md_articles` не создаёт engine и не открывает
-  сессий — это происходит только при первом запросе (или при явном
-  вызове `register_md_articles`).
-
-См. `docs/15_md_articles_package.md` — общий разбор пакета: контракт
-plug-in, схема запросов, жизненный цикл сессии и current_user.
 """
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
