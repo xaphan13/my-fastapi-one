@@ -62,9 +62,9 @@ disposition adversary, участники), а в свежую заглушку 
 
 ## Возможности
 
-- 40 route-объектов: 21 API-эндпоинт плюс служебные `/docs`, `/redoc`,
+- 41 route-объект: 21 API-эндпоинт плюс служебные `/docs`, `/redoc`,
   `/openapi.json`, `/docs/oauth2-redirect` (кастомный Swagger/ReDoc на CDN через
-  `utils/docs.py`) + 12 JSON-роутов блога `/api/blog` + mount `/static` (аватары),
+  `utils/docs.py`) + 13 JSON-роутов блога `/api/blog` + mount `/static` (аватары),
   mount `/assets` (сборка фронтенда) и SPA catch-all `/{full_path:path}`.
 - Демонстрация 9 способов `Depends`: функции, классы с `__call__`, метод-генератор с
   teardown, фабрики зависимостей, вложенные зависимости.
@@ -178,7 +178,7 @@ Env-файлы лежат в `fastapi-application/` и **закоммичены*
 
 ## Маршруты
 
-40 route-объектов всего (проверка: `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` → `40`; 21 API + 4 служебных + 12 JSON-роутов блога + mount `/static` + mount `/assets` + SPA catch-all).
+41 route-объект всего (проверка: `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` → `41`; 21 API + 4 служебных (`/docs`, `/redoc`, `/openapi.json`, `/docs/oauth2-redirect`) + 13 JSON-роутов блога (`/api/blog/csrf`, `/current_user`, `/register`, `/login`, `/logout`, `/account` ×2, `/sections`, `/articles`, `/articles/{id}`, `/art_manage`, `/art_manage/add_all`, `/art_manage/meta`) + mount `/static` + mount `/assets` + SPA catch-all).
 
 | Методы | Маршрут | Назначение |
 |---|---|---|

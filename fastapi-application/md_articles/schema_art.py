@@ -199,3 +199,25 @@ def scan_content_art() -> list[str]:
         if entry.is_file() and entry.suffix.lower() in {".md", ".markdown"}:
             files.append(entry.relative_to(content_dir).as_posix())
     return sorted(files)
+
+
+def sync_registry_with_disk() -> tuple[int, int]:
+    """
+    Синхронизировать реестр articles.yaml с файлами на диске.
+
+    Удаляет записи из реестра, для которых нет соответствующих файлов.
+    Возвращает кортеж (удалено, всего_после_синхронизации).
+    """
+    articles = list(get_articles())
+    disk_files = set(scan_content_art())
+
+    # Оставить только те статьи, у которых файл существует на диске
+    original_count = len(articles)
+    articles = [art for art in articles if art.file_name in disk_files]
+    removed_count = original_count - len(articles)
+
+    if removed_count > 0:
+        save_articles(articles)
+        logF.info(f"sync_registry_with_disk: удалено {removed_count} сиротских записей")
+
+    return removed_count, len(articles)

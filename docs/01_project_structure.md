@@ -40,7 +40,8 @@ my-fastapi-one/
 │       └── types.ts                 # User, Article, Section — типы контракта /api/blog
 ├── templates_qwen_agents/           # Комплект агентного режима из другого проекта — только пример
 ├── fastapi-application/             # Корень Python-приложения (= BASE_DIR)
-│   ├── main.py                      # Точка входа uvicorn; main_app + include_router + mount /assets + SPA catch-all
+│   ├── main.py                      # Точка входа uvicorn; сборка main_app из роутеров + setup_spa()
+│   ├── frontend_spa.py              # Подключение собранного React: mount /assets + SPA catch-all
 │   ├── main_gunicorn.py             # Точка входа gunicorn; переиспользует main_app
 │   ├── create_fastapi.py            # Фабрика приложения create_app() + lifespan + register_md_articles
 │   ├── base_dir_path.py             # DIR_CWD / BASE_DIR (Path)
@@ -140,7 +141,8 @@ my-fastapi-one/
 
 | Файл | Ответственность | Абстракции |
 |---|---|---|
-| `fastapi-application/main.py` | Собирает `main_app`: вызывает `create_app()` (тот подключает блог через `register_md_articles`), подключает три корневых роутера, монтирует `/assets` из `frontend/dist/assets` и добавляет **последним** SPA catch-all `/{full_path:path}` (отдаёт `frontend/dist/index.html`; для `/api*` — 404 JSON). Функция `main()` запускает `uvicorn.run("main:main_app", reload=True)`. | `main_app: FastAPI`, `spa_fallback()`, `main()` |
+| `fastapi-application/main.py` | Собирает `main_app`: вызывает `create_app()` (тот подключает блог через `register_md_articles`), подключает три корневых роутера и вызывает `setup_spa(main_app)`. Функция `main()` запускает `uvicorn.run("main:main_app", reload=True)`. Вся SPA-обвязка вынесена в `frontend_spa.py`. | `main_app: FastAPI`, `main()` |
+| `fastapi-application/frontend_spa.py` | Единственная точка, где FastAPI узнаёт про фронтенд. `setup_spa(app)` монтирует `/assets` (`StaticFiles` из `frontend/dist/assets`, `check_dir=False`), дописывает в конец `app.router.routes` GET-catch-all `/{full_path:path}` → `spa_fallback` (отдаёт `index.html`; для `/api*` и при отсутствии `index.html` — JSON 404). Подробно — в [`docs/13_frontend_spa_module.md`](13_frontend_spa_module.md). | `setup_spa()`, `spa_fallback()`, `FRONTEND_DIST`, `ASSETS_DIR`, `INDEX_HTML` |
 | `fastapi-application/create_fastapi.py` | Единственное место создания `FastAPI`. Настраивает `ORJSONResponse` по умолчанию, `lifespan`, переключает встроенные `/docs` на кастомные по флагу и вызывает `register_md_articles(app)` — подключение блога. | `create_app()`, `lifespan()` |
 | `fastapi-application/base_dir_path.py` | Два `Path`-константы. `BASE_DIR` = каталог `fastapi-application/`, служит якорем для `.env`, папки логов, контента статей (`content_art/`) и аватаров. | `BASE_DIR` |
 

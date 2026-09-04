@@ -31,12 +31,6 @@ articles:
   section: AI инструменты
 - author: NoName
   lang: AI инструменты
-  art_id: 1788345983
-  title: custom-color-vscode
-  file_name: AI инструменты/custom-color-vscode.md
-  section: AI инструменты
-- author: NoName
-  lang: AI инструменты
   art_id: 1788345984
   title: deepseek-r1-fastapi-1
   file_name: AI инструменты/deepseek-r1-fastapi-1.md
@@ -73,18 +67,6 @@ articles:
   section: Fast API
 - author: NoName
   lang: Fast API
-  art_id: 1788345990
-  title: gemPro-book1-g
-  file_name: Fast API/gemPro-book1-g.md
-  section: Fast API
-- author: NoName
-  lang: Fast API
-  art_id: 1788345991
-  title: gemPro-book1-s
-  file_name: Fast API/gemPro-book1-s.md
-  section: Fast API
-- author: NoName
-  lang: Fast API
   art_id: 1788345992
   title: gemini-pro-fastapi-1
   file_name: Fast API/gemini-pro-fastapi-1.md
@@ -94,18 +76,6 @@ articles:
   art_id: 1788345993
   title: gigachat-fastapi-1
   file_name: Fast API/gigachat-fastapi-1.md
-  section: Fast API
-- author: NoName
-  lang: Fast API
-  art_id: 1788345994
-  title: gpt5-deep-instal-windsurf-1
-  file_name: Fast API/gpt5-deep-instal-windsurf-1.md
-  section: Fast API
-- author: NoName
-  lang: Fast API
-  art_id: 1788345995
-  title: gpt5-deep-instal-windsurf-2
-  file_name: Fast API/gpt5-deep-instal-windsurf-2.md
   section: Fast API
 - author: NoName
   lang: Fast API
@@ -485,4 +455,28 @@ articles:
   art_id: 1788441275
   title: Современное логирование в Python для FastAPI
   file_name: Guide FastAPI/Современное логирование в Python для FastAPI.md
+  section: Guide FastAPI
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788535494
+  title: gpt5-deep-instal-windsurf-1
+  file_name: AI инструменты/gpt5-deep-instal-windsurf-1.md
+  section: AI инструменты
+- author: NoName
+  lang: AI инструменты
+  art_id: 1788535495
+  title: gpt5-deep-instal-windsurf-2
+  file_name: AI инструменты/gpt5-deep-instal-windsurf-2.md
+  section: AI инструменты
+- author: NoName
+  lang: Guide FastAPI
+  art_id: 1788535496
+  title: gemPro-book1-g
+  file_name: Guide FastAPI/gemPro-book1-g.md
+  section: Guide FastAPI
+- author: NoName
+  lang: Guide FastAPI
+  art_id: 1788535497
+  title: gemPro-book1-s
+  file_name: Guide FastAPI/gemPro-book1-s.md
   section: Guide FastAPI

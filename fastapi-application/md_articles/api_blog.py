@@ -27,6 +27,7 @@ from md_articles.schema_art import (
     render_article,
     save_articles,
     scan_content_art,
+    sync_registry_with_disk,
 )
 from md_articles.web_utils import (
     get_current_user,
@@ -575,3 +576,18 @@ async def art_manage_meta_api(
 
     save_articles(articles)
     return {"message": f"{action_word} запись для {file_name}", "category": "success"}
+
+
+@router_blog_api.post("/art_manage/sync", name="blog_api.art_manage_sync")
+async def art_manage_sync_api(request: Request, _user=Depends(require_login_api)):
+    """
+    Синхронизировать реестр articles.yaml с файлами на диске.
+
+    Удаляет записи из реестра, для которых нет соответствующих .md файлов.
+    """
+    await validate_csrf_header(request)
+
+    removed, total = sync_registry_with_disk()
+    if removed > 0:
+        return {"message": f"Удалено сиротских записей: {removed}. Всего статей: {total}", "category": "success"}
+    return {"message": "Синхронизация не требуется — сиротских записей нет", "category": "info"}

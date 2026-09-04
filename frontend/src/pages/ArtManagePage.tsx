@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getArtManage,
   addAllEntries,
+  syncRegistry,
   type ArtManageResp,
   type RegistryArticle,
 } from '../api/artManage';
@@ -108,6 +109,17 @@ export default function ArtManagePage() {
       setAdding(false);
     }
   };
+
+  // POST syncRegistry + перезагрузка контекста после успеха.
+  const handleCleanMissing = useCallback(async () => {
+    try {
+      const resp = await syncRegistry();
+      showToast(resp.message, resp.category as ToastCategory);
+      await load();
+    } catch {
+      showToast('Не удалось очистить сиротские записи', 'danger');
+    }
+  }, [load, showToast]);
 
   // Любая смена фильтров/поиска/pageSize сбрасывает пагинацию на 1.
   useEffect(() => {
@@ -338,14 +350,23 @@ export default function ArtManagePage() {
 
       <h2>Записи без файла на диске</h2>
       {data.missing_entries.length > 0 ? (
-        <ul className="missing-list">
-          {data.missing_entries.map((art) => (
-            <li key={art.art_id} className="mono">
-              {art.file_name} (автор: {art.author || '—'}, lang:{' '}
-              {art.lang || '—'})
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="missing-list">
+            {data.missing_entries.map((art) => (
+              <li key={art.art_id} className="mono">
+                {art.file_name} (автор: {art.author || '—'}, lang:{' '}
+                {art.lang || '—'})
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={handleCleanMissing}
+          >
+            Очистить сиротские записи ({data.missing_entries.length})
+          </button>
+        </>
       ) : (
         <p className="text-muted">Все записи имеют файл на диске.</p>
       )}

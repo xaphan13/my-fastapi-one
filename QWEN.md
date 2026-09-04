@@ -59,12 +59,15 @@
 | `r_order_one` | `ex_order_product/router_order_one.py` | `/orders` | 6 роутов Order: ORM/Core запись, фильтры, сортировка, joinedload |
 | `router_blog_api` | `md_articles/api_blog.py` | `/api/blog` | JSON API блога для React SPA: csrf, current_user, register/login/logout, account (GET/POST), articles, articles/{id}, art_manage + add_all + meta |
 
-Итого 40 route-объектов: 21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
+Итого 41 route-объект: 21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
 `/docs/oauth2-redirect` (кастомные Swagger/ReDoc регистрирует `utils/docs.py`)
-+ 12 JSON-роутов блога + mount `/static` (аватары) + mount `/assets`
++ 13 JSON-роутов блога + mount `/static` (аватары) + mount `/assets`
 (сборка фронтенда) + SPA catch-all `/{full_path:path}` (отдаёт
 `frontend/dist/index.html`, для `/api*` — 404 JSON). Клиентская часть блога —
 React SPA в `frontend/` (Vite + TypeScript + Tailwind v4, сборка не коммитится).
+
+Проверка счётчика: `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` → `41`.
+Разбивка: 34 `APIRoute` (21 из `router_api`/`r_users_sql`/`r_order_one` + 13 из `api_blog.py`) + 5 `Route` (4 служебных + SPA catch-all) + 2 `Mount` (`/static` блога, `/assets` SPA).
 
 ```
 my-fastapi-one/                 <- корень репозитория; здесь запускается qwen-code
@@ -72,7 +75,7 @@ my-fastapi-one/                 <- корень репозитория; здес
 ├── tasks/                       задания команды: current/ — живое, NNN-<slug>/ — архив (ведёшь ты)
 ├── .qwen/agents/                субагенты: frontend-dev, backend-dev, qa, adversary
 ├── frontend/                    React SPA блога: Vite + TS + Tailwind v4 (dist/ не коммитится)
-├── docs/                        подробная документация по проекту (11 файлов, рус.)
+├── docs/                        подробная документация по проекту (15 файлов, рус.)
 ├── templates_qwen_agents/       комплект агентного режима из другого проекта — ТОЛЬКО пример, не трогать
 ├── templates_flaskblog/         исходник блога (Flask) — ТОЛЬКО пример, не трогать
 ├── docker-compose.yml           dev-стек: pg + adminer + pgadmin
@@ -80,7 +83,8 @@ my-fastapi-one/                 <- корень репозитория; здес
 ├── Makefile                     запуск uvicorn, alembic, docker network
 ├── pyproject.toml uv.lock       зависимости (uv) + конфиг ruff/black
 └── fastapi-application/         корень Python-приложения (= BASE_DIR)
-    ├── main.py                  main_app + SPA-слой: mount /assets + catch-all на frontend/dist
+    ├── main.py                  main_app + подключение роутеров + setup_spa() (SPA-слой в frontend_spa.py)
+    ├── frontend_spa.py          mount /assets + SPA catch-all + защита /api* (см. docs/13)
     ├── main_gunicorn.py         точка входа gunicorn (переиспользует main_app)
     ├── create_fastapi.py        фабрика create_app() + lifespan + register_md_articles
     ├── base_dir_path.py         DIR_CWD / BASE_DIR (Path)
@@ -117,6 +121,10 @@ my-fastapi-one/                 <- корень репозитория; здес
 | [`docs/09_ideas_data_layer.md`](docs/09_ideas_data_layer.md) | идеи развития: слой данных |
 | [`docs/10_ideas_testing_infra.md`](docs/10_ideas_testing_infra.md) | идеи развития: тесты, конфигурация, инфраструктура |
 | [`docs/11_md_articles.md`](docs/11_md_articles.md) | блог md_articles: архитектура, маршруты, отличия от Flask-версии |
+| [`docs/12_fastapi_react_integration.md`](docs/12_fastapi_react_integration.md) | связка FastAPI + React: способы организации фронтенда, dev vs прод |
+| [`docs/13_frontend_spa_module.md`](docs/13_frontend_spa_module.md) | модуль `frontend_spa.py`: как код подключает собранный React, dev-режим без `dist/` |
+| [`docs/14_create_fastapi_factory.md`](docs/14_create_fastapi_factory.md) | фабрика `create_app()` и `lifespan` в `create_fastapi.py`: каркас vs наполнение |
+| [`docs/15_md_articles_package.md`](docs/15_md_articles_package.md) | пакет `md_articles`: JSON API блога, реестр статей, сессии |
 
 ## Индекс кодовой базы
 

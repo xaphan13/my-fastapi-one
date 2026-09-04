@@ -37,3 +37,8 @@ export function updateMeta(body: {
 }): Promise<MessageResp> {
   return postJson<MessageResp>('/api/blog/art_manage/meta', body);
 }
+
+// POST /api/blog/art_manage/sync — очистить сиротские записи из реестра.
+export function syncRegistry(): Promise<MessageResp> {
+  return postJson<MessageResp>('/api/blog/art_manage/sync', {});
+}

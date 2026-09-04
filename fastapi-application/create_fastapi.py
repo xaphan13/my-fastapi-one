@@ -3,25 +3,69 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
-from core.config import settings, SqliteDsn
-from db_core.db_async import db_manager
-from utils.docs import reg_docs_routes
-
 from config_log import logF
+from core.config import SqliteDsn, settings
+from db_core.db_async import db_manager
+from md_articles import register_md_articles
+from utils.docs import reg_docs_routes
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup
+    """
+    Жизненный цикл приложения: startup → yield → shutdown.
+
+    Startup:
+      Логирует URL базы и заголовок приложения. Если URL — SQLite
+      (диагностика для разработки), выводит предупреждение: в проде
+      ожидается PostgreSQL.
+
+    Shutdown:
+      `db_manager.engine_dispose()` асинхронно закрывает пул соединений
+      engine SQLAlchemy. Без явного dispose процесс может «висеть» при
+      выходе из-за незакрытых фоновых задач внутри драйвера БД
+      (особенно заметно на `asyncpg`). `main_gunicorn.py` и `uvicorn
+      --reload` корректно дожидаются завершения lifespan при остановке
+      сигналом SIGTERM/SIGINT.
+
+    Подробности и причины выбранной структуры — в
+    `docs/14_create_fastapi_factory.md`.
+    """
     logF.info(f"startup lifespan :\n{settings.db.url=} \n{app.title=}")
     if isinstance(settings.db.url, SqliteDsn):
         logF.warning(f"used test sqlite dataBase : {settings.db.url=}")
     yield
-    # shutdown
     await db_manager.engine_dispose()
 
 
 def create_app(custom_docs_url: bool = False) -> FastAPI:
+    """
+    Создаёт и возвращает сконфигурированный экземпляр `FastAPI`.
+
+    Параметры:
+      custom_docs_url:
+        False (по умолчанию) — стандартные `/docs` и `/redoc` от FastAPI.
+        True — стандартные выключены (`docs_url=None`, `redoc_url=None`),
+        а вместо них `reg_docs_routes(app)` регистрирует кастомные
+        Swagger/ReDoc-страницы (с CDN, без `oauth2-redirect` и т. п.).
+        Используется в прод-режиме, когда стандартный UI не подходит.
+
+    Возвращает:
+      `FastAPI` с:
+        - `default_response_class=ORJSONResponse` (быстрее `jsonable_encoder`
+          на типичных pydantic-моделях);
+        - подключённым `lifespan` (см. выше);
+        - блогом `md_articles` через `register_md_articles(app)`
+          (middleware + mount `/static` + JSON-роутер `/api/blog`);
+        - кастомными Swagger/ReDoc, если `custom_docs_url=True`.
+
+    Роутеры демо-части (`api/`, `ex_user_post/`, `ex_order_product/`)
+    и SPA (`frontend_spa.setup_spa`) подключаются в `main.py` ПОСЛЕ
+    вызова `create_app()` — фабрика их не знает.
+
+    Полное описание «каркас vs наполнение» — в
+    `docs/14_create_fastapi_factory.md`.
+    """
     docs_url, redoc_url = (None, None) if custom_docs_url else ("/docs", "/redoc")
 
     app = FastAPI(
@@ -34,8 +78,6 @@ def create_app(custom_docs_url: bool = False) -> FastAPI:
 
     if custom_docs_url:
         reg_docs_routes(app)
-
-    from md_articles import register_md_articles
 
     register_md_articles(app)
 

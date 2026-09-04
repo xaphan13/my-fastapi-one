@@ -59,12 +59,15 @@
 | `r_order_one` | `ex_order_product/router_order_one.py` | `/orders` | 6 роутов Order: ORM/Core запись, фильтры, сортировка, joinedload |
 | `router_blog_api` | `md_articles/api_blog.py` | `/api/blog` | JSON API блога для React SPA: csrf, current_user, register/login/logout, account (GET/POST), articles, articles/{id}, art_manage + add_all + meta |
 
-Итого 40 route-объектов: 21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
+Итого 41 route-объект: 21 API + служебные `/docs`, `/redoc`, `/openapi.json`,
 `/docs/oauth2-redirect` (кастомные Swagger/ReDoc регистрирует `utils/docs.py`)
-+ 12 JSON-роутов блога + mount `/static` (аватары) + mount `/assets`
++ 13 JSON-роутов блога + mount `/static` (аватары) + mount `/assets`
 (сборка фронтенда) + SPA catch-all `/{full_path:path}` (отдаёт
 `frontend/dist/index.html`, для `/api*` — 404 JSON). Клиентская часть блога —
 React SPA в `frontend/` (Vite + TypeScript + Tailwind v4, сборка не коммитится).
+
+Проверка счётчика: `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` → `41`.
+Разбивка: 34 `APIRoute` (21 из `router_api`/`r_users_sql`/`r_order_one` + 13 из `api_blog.py`) + 5 `Route` (4 служебных + SPA catch-all) + 2 `Mount` (`/static` блога, `/assets` SPA).
 
 ```
 my-fastapi-one/                 <- корень репозитория; здесь запускается qwen-code
@@ -72,7 +75,7 @@ my-fastapi-one/                 <- корень репозитория; здес
 ├── tasks/                       задания команды: current/ — живое, NNN-<slug>/ — архив (ведёт оркестратор)
 ├── .qwen/agents/                субагенты: frontend-dev, backend-dev, qa, adversary
 ├── frontend/                    React SPA блога: Vite + TS + Tailwind v4 (dist/ не коммитится)
-├── docs/                        подробная документация по проекту (11 файлов, рус.)
+├── docs/                        подробная документация по проекту (15 файлов, рус.)
 ├── templates_qwen_agents/       комплект агентного режима из другого проекта — ТОЛЬКО пример, не трогать
 ├── templates_flaskblog/         исходник блога (Flask) — ТОЛЬКО пример, не трогать
 ├── docker-compose.yml           dev-стек: pg + adminer + pgadmin
@@ -80,7 +83,8 @@ my-fastapi-one/                 <- корень репозитория; здес
 ├── Makefile                     запуск uvicorn, alembic, docker network
 ├── pyproject.toml uv.lock       зависимости (uv) + конфиг ruff/black
 └── fastapi-application/         корень Python-приложения (= BASE_DIR)
-    ├── main.py                  main_app + SPA-слой: mount /assets + catch-all на frontend/dist
+    ├── main.py                  main_app + подключение роутеров + setup_spa() (SPA-слой в frontend_spa.py)
+    ├── frontend_spa.py          mount /assets + SPA catch-all + защита /api* (см. docs/13)
     ├── main_gunicorn.py         точка входа gunicorn (переиспользует main_app)
     ├── create_fastapi.py        фабрика create_app() + lifespan + register_md_articles
     ├── base_dir_path.py         DIR_CWD / BASE_DIR (Path)
@@ -117,6 +121,10 @@ my-fastapi-one/                 <- корень репозитория; здес
 | [`docs/09_ideas_data_layer.md`](docs/09_ideas_data_layer.md) | идеи развития: слой данных |
 | [`docs/10_ideas_testing_infra.md`](docs/10_ideas_testing_infra.md) | идеи развития: тесты, конфигурация, инфраструктура |
 | [`docs/11_md_articles.md`](docs/11_md_articles.md) | блог md_articles: архитектура, маршруты, отличия от Flask-версии |
+| [`docs/12_fastapi_react_integration.md`](docs/12_fastapi_react_integration.md) | связка FastAPI + React: способы организации фронтенда, dev vs прод |
+| [`docs/13_frontend_spa_module.md`](docs/13_frontend_spa_module.md) | модуль `frontend_spa.py`: как код подключает собранный React, dev-режим без `dist/` |
+| [`docs/14_create_fastapi_factory.md`](docs/14_create_fastapi_factory.md) | фабрика `create_app()` и `lifespan` в `create_fastapi.py`: каркас vs наполнение |
+| [`docs/15_md_articles_package.md`](docs/15_md_articles_package.md) | пакет `md_articles`: JSON API блога, реестр статей, сессии |
 
 ## Индекс кодовой базы
 
@@ -360,7 +368,7 @@ nginx находятся в `.gitignore` — никогда не добавля�
 | Агент | Зона (можно редактировать) | Чем проверяет изменения | Особые запреты |
 |---|---|---|---|
 | frontend-dev | `frontend/` (React SPA: источники, Vite-конфиги, сборка), `nginx/web/`; пока жив старый блог — также Jinja2-шаблоны и статика блога `fastapi-application/templates/`, `fastapi-application/static/` (кроме контента `fastapi-application/content_art/` — статьи кладёт пользователь) | `cd frontend && npm run build` без ошибок; просмотр страницы; скриншот в `tasks/current/screenshots/` | Python-модули `fastapi-application/` — зона backend-dev; `frontend/dist` не коммитится |
-| backend-dev | Python-модули `fastapi-application/` (включая `alembic/`, env-профили, `md_articles/` с JSON API `api_blog.py`) | `uv run ruff check .`; `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` (до фазы 7 удаления Jinja — 54, после — 40); curl изменённых эндпоинтов на запущенном приложении | `frontend/`, `nginx/web/`, `fastapi-application/templates/`, `fastapi-application/static/`; устаревшие API из раздела «Известные дефекты» — не чинить без отдельного задания; дублирование `api/my_routes_dep/` — намеренное; поведение блога `md_articles/` — порт flask-blog-1, «улучшательства» без отдельного задания запрещены |
+| backend-dev | Python-модули `fastapi-application/` (включая `alembic/`, env-профили, `md_articles/` с JSON API `api_blog.py`) | `uv run ruff check .`; `cd fastapi-application && ../.venv/bin/python -c "from main import main_app; print(len(main_app.routes))"` (после задачи 003 — 41; исторически до фазы 7 удаления Jinja — 54, после — 40, плюс добавлен `/api/blog/account` POST в задаче 011); curl изменённых эндпоинтов на запущенном приложении | `frontend/`, `nginx/web/`, `fastapi-application/templates/`, `fastapi-application/static/`; устаревшие API из раздела «Известные дефекты» — не чинить без отдельного задания; дублирование `api/my_routes_dep/` — намеренное; поведение блога `md_articles/` — порт flask-blog-1, «улучшательства» без отдельного задания запрещены |
 | qa | `tasks/current/e2e/`, `tasks/current/DEFECTS.md`, `tasks/current/screenshots/` | curl-сценарии из критериев успеха текущего задания; регресс: `/docs`, `/users/get_all_users`, `/orders/get_all_orders`, один из `/api/v1/dep_examples/*`, `/art_home` | любой код продукта |
 | adversary | `tasks/current/ADVERSARIAL_REVIEW.md`, `tasks/current/screenshots/` | curl по запущенному приложению; логи `fastapi-application/log/` | всё, кроме своих файлов |
 | spec-writer | `tasks/current/REQUIREMENTS.md` — только на фазе создания задания, одним `write_file` по шаблону `.qwen/skills/task-spec/TEMPLATE.md` | чек-лист скилла `task-spec` (проверяет оркестратор) | код продукта; всё, кроме REQUIREMENTS.md на фазе создания |
