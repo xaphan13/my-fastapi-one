@@ -30,7 +30,6 @@ from md_articles.schema_art import (
     sync_registry_with_disk,
 )
 from md_articles.web_utils import (
-    get_current_user,
     hash_password,
     login_user,
     logout_user,
