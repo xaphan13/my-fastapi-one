@@ -733,9 +733,6 @@ origin один, микросервисов нет.
 Наследие, оставшееся в коде:
 
 - `BlogUser.is_authenticated` — совместимость с `UserMixin` (`models.py:41`);
-- `md_articles/routes_users.py` — полный Jinja-слой (`/register`, `/login`,
-  `/logout`, `/account`, flash, редиректы) — **не зарегистрирован** в приложении
-  и не используется; жив как исторический референс (см. `docs/11_md_articles.md`);
 - поле `remember` в `LoginIn` — реликт формы Flask-WTF.
 
 ---

@@ -43,3 +43,8 @@
 
 ### 2026-09-05 — ruff
 - `uv run ruff check .` → `All checks passed!` (exit 0). Чисто.
+
+### 2026-09-05 — доделка оркестратором
+- В ревью диффа `7de447b` найдена пропущенная ссылка: `docs/12_authorization_report.md:736` (блок «Наследие, оставшееся в коде», пункт про `routes_users.py`). Это не входило в первоначальную спецификацию (оркестратор указал строки 759 и 777).
+- Узкая правка оркестратором: bullet `md_articles/routes_users.py — полный Jinja-слой...` удалён, остались только два настоящих наследия (`BlogUser.is_authenticated` и `remember`).
+- Контроль `grep -rn 'routes_users|routes_articles|routes_main' fastapi-application/ frontend/src/ docs/` → 0 совпадений. Зачистка живой кодовой базы и `docs/` от ссылок на удалённые файлы завершена.
