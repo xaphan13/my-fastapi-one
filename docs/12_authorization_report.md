@@ -756,8 +756,6 @@ origin один, микросервисов нет.
    (сейчас дефолт без предупреждения в логе).
 7. **Роли** (`is_admin`) для `/art_manage` — единственное место, где разграничение
    прав имело бы смысл.
-8. Устаревший Jinja-слой `routes_users.py` — кандидат на удаление вместе с
-   `templates/` (в плане фазы 7 порт-задания), если историческая ценность не нужна.
 
 ---
 
@@ -774,7 +772,6 @@ fastapi-application/
 │   ├── models.py                       # BlogUser (blog_user): password = bcrypt-хеш
 │   ├── api_blog.py                     # JSON API: /csrf /register /login /logout
 │   │                                   #   /account; require_login_api; validate_csrf_*
-│   └── routes_users.py                 # УСТАРЕВШИЙ Jinja-слой — не зарегистрирован
 frontend/src/api/
 ├── client.ts                           # credentials:'include', getCsrfToken,
 │                                       #   postJson (X-CSRF-Token), postMultipart (поле)

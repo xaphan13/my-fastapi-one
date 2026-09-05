@@ -15,8 +15,8 @@ interface FormState {
   confirm_password: string;
 }
 
-// Клиентская валидация: зеркалирует серверную (/routes_users.py логика
-// перенесена в api_blog.py как есть — те же проверки длины и email).
+// Клиентская валидация: зеркалирует серверную в api_blog.py
+// (те же правила длины и email).
 export function validate(form: FormState): Record<string, string[]> {
   const errors: Record<string, string[]> = {};
   if (!form.username.trim()) {
