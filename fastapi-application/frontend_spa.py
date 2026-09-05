@@ -101,5 +101,7 @@ def setup_spa(app: FastAPI) -> None:
         StaticFiles(directory=ASSETS_DIR, check_dir=False),
         name="spa_assets",
     )
+
     app.router.routes.append(Route("/{full_path:path}", spa_fallback, methods=["GET"]))
+
     logF.info(f"SPA подключена: index={INDEX_HTML}, assets={ASSETS_DIR}")

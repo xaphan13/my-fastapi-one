@@ -19,8 +19,7 @@ async def lifespan(app: FastAPI):
 
     Shutdown:
       `db_manager.engine_dispose()` асинхронно закрывает пул соединений engine SQLAlchemy.
-      `uvicorn --reload` корректно дожидаются завершения lifespan
-      при остановке сигналом SIGTERM/SIGINT.
+      `uvicorn --reload` корректно дожидаются завершения lifespan при остановке SIGTERM/SIGINT.
 
     Подробности и причины выбранной структуры — в `docs/14_create_fastapi_factory.md`.
     """
@@ -38,21 +37,13 @@ def create_app(custom_docs_url: bool = False) -> FastAPI:
     Параметры:
       custom_docs_url:
         False (по умолчанию) — стандартные `/docs` и `/redoc` от FastAPI.
-        True — стандартные выключены (`docs_url=None`, `redoc_url=None`),
-        а вместо них `reg_docs_routes(app)` регистрирует кастомные
-        Swagger/ReDoc-страницы (с CDN, без `oauth2-redirect` и т. п.).
+        True — вместо них `reg_docs_routes(app)` регистрирует кастомные.
 
     Возвращает:
       `FastAPI` с:
-        - `default_response_class=ORJSONResponse`
-          (быстрее `jsonable_encoder` на типичных pydantic-моделях);
+        - `default_response_class=ORJSONResponse` (быстрее `jsonable_encoder`);
         - подключённым `lifespan` (см. выше);
         - кастомными Swagger/ReDoc, если `custom_docs_url=True`.
-
-    Роутеры демо-части (`api/`, `ex_user_post/`, `ex_order_product/`),
-    блог `md_articles` через `md_articles.register_md_articles(app)`
-    и SPA (`frontend_spa.setup_spa`) подключаются в `main.py`
-    ПОСЛЕ вызова `create_app()` — фабрика их не знает.
 
     Полное описание «каркас vs наполнение» — в `docs/14_create_fastapi_factory.md`.
     """

@@ -22,11 +22,13 @@ from base_dir_path import BASE_DIR
 from config_log import logF
 from core.config import settings
 from db_core.db_async import db_manager
+
 from md_articles.api_blog import (
     custom_request_validation_exception_handler,
     router_blog_api,
 )
 from md_articles.web_utils import get_current_user
+from fastapi.exceptions import RequestValidationError
 
 
 async def inject_current_user_middleware(request: Request, call_next):
@@ -93,9 +95,7 @@ def register_md_articles(app: FastAPI) -> None:
       4. `app.add_exception_handler(RequestValidationError, ...)`
          и `app.include_router(router_blog_api)` — JSON-роутер
          блога + кастомный обработчик 422 для красивых сообщений
-         валидации. `RequestValidationError` импортируется
-         **локально** — он нужен только здесь, и поднимать его в
-         шапку модуля ради одного использования нет смысла.
+         валидации.
 
     Подключается из `main.py` после доменных `include_router` и до
     `setup_spa(main_app)`. Порядок включения middleware относительно
@@ -120,8 +120,6 @@ def register_md_articles(app: FastAPI) -> None:
         StaticFiles(directory=BASE_DIR / "static", check_dir=False),
         name="static",
     )
-
-    from fastapi.exceptions import RequestValidationError
 
     app.add_exception_handler(
         RequestValidationError,
